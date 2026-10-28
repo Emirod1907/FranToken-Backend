@@ -32,11 +32,22 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   db: {
+    // "mysql" (local) o "postgres" (Supabase y otros). Si hay DATABASE_URL con
+    // esquema postgres:// se infiere postgres salvo que se fije DB_DIALECT.
+    dialect: (process.env.DB_DIALECT ??
+      (/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? "")
+        ? "postgres"
+        : "mysql")) as "mysql" | "postgres",
+    // Cadena de conexión única (la que dan los hostings). Tiene prioridad sobre
+    // los campos sueltos de abajo.
+    url: process.env.DATABASE_URL ?? "",
     host: process.env.DB_HOST ?? "127.0.0.1",
     port: int("DB_PORT", 3306),
-    name: required("DB_NAME", "frantoken"),
-    user: required("DB_USER", "root"),
+    name: process.env.DB_NAME ?? "frantoken",
+    user: process.env.DB_USER ?? "root",
     password: process.env.DB_PASSWORD ?? "",
+    // SSL requerido por casi todos los hosts administrados (Supabase incluido).
+    ssl: bool("DB_SSL", false),
     sync: bool("DB_SYNC", true),
     logging: bool("DB_LOGGING", false),
   },

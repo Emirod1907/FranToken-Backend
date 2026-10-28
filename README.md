@@ -50,6 +50,44 @@ npm run db:seed:prod
 npm start
 ```
 
+## Despliegue en internet
+
+El backend soporta **MySQL** y **PostgreSQL** (mismo código, cambia `DB_DIALECT`). Hay dos piezas: la **base de datos** administrada y el **servidor Node**.
+
+### 1) Base de datos administrada
+
+**Opción Supabase (PostgreSQL — recomendada, free):**
+1. Crear proyecto en [supabase.com](https://supabase.com) y elegir una contraseña de base de datos.
+2. _Project Settings → Database → Connection string_ → copiar la de **Session Pooler** (puerto `5432`).
+3. En el servidor Node definir:
+   ```
+   DATABASE_URL=postgresql://postgres.<ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:5432/postgres
+   DB_SSL=true
+   DB_SYNC=true      # en el primer deploy, para crear las tablas
+   ```
+   `DB_DIALECT` se detecta solo por el esquema `postgresql://`.
+4. Crear tablas + datos demo contra Supabase:
+   ```bash
+   npm run build && npm run db:seed:prod
+   ```
+   (o dejar `DB_SYNC=true` y arrancar una vez). Luego conviene poner `DB_SYNC=false`.
+
+> Supabase es Postgres. No uses el puerto `6543` (transaction pooler) con Sequelize; usá el **session pooler `5432`** o la conexión directa.
+
+**Opción MySQL administrado** (Railway, Aiven, Clever Cloud, PlanetScale): dejar `DB_DIALECT=mysql`, `DB_SSL=true` y pegar su `DATABASE_URL` (`mysql://...`).
+
+### 2) Servidor Node (API)
+
+Cualquier host de Node sirve. Ejemplo **Render** / **Railway**:
+- **Build command:** `npm install && npm run build`
+- **Start command:** `npm start`
+- **Variables de entorno:** `DATABASE_URL`, `DB_SSL=true`, `JWT_SECRET` (uno largo y aleatorio), `CORS_ORIGIN=https://tu-frontend` y, si usás on-chain, las `BLOCKCHAIN_*`.
+- El host asigna el puerto por `PORT` (ya se lee de `env`).
+
+El frontend debe apuntar sus `fetch` a la URL pública del backend (p. ej. `https://frantoken-backend.onrender.com/api`).
+
+> Nota: Supabase trae su propio Auth, Storage y RLS. Este backend usa Supabase **solo como base de datos Postgres** vía Sequelize; no usa el SDK de Supabase ni RLS. Si en el futuro querés Supabase Auth/RLS, es otra integración distinta.
+
 ## Autenticación
 
 JWT Bearer. `register`/`login` devuelven `{ token, session }`. El cliente guarda el token y lo envía en cada petición protegida:
