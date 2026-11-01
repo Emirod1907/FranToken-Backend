@@ -7,7 +7,10 @@ import {
   franchiseApplicationSchema,
   profileSchema,
 } from "../validators/account.validator";
-import { walletSchema } from "../validators/blockchain.validator";
+import {
+  walletChallengeSchema,
+  walletLinkSchema,
+} from "../validators/blockchain.validator";
 
 const router = Router();
 
@@ -30,8 +33,13 @@ router.get("/draft", accountController.getDraft);
 router.put("/draft", validateBody(draftSchema), accountController.saveDraft);
 router.delete("/draft", accountController.clearDraft);
 
-// Wallet EVM vinculada (para consultar tenencias on-chain).
+// Wallet EVM vinculada (con prueba de control mediante desafío firmado).
 router.get("/wallet", accountController.getWallet);
-router.put("/wallet", validateBody(walletSchema), accountController.linkWallet);
+router.post(
+  "/wallet/challenge",
+  validateBody(walletChallengeSchema),
+  accountController.requestWalletChallenge,
+);
+router.put("/wallet", validateBody(walletLinkSchema), accountController.linkWallet);
 
 export default router;

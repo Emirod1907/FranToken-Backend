@@ -13,9 +13,24 @@ export const getWallet = asyncHandler(async (req: Request, res: Response) => {
   res.json(accountService.getWallet(req.user));
 });
 
+export const requestWalletChallenge = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) throw ApiError.unauthorized();
+    res.json(
+      await accountService.requestWalletChallenge(req.user, req.body.walletAddress),
+    );
+  },
+);
+
 export const linkWallet = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
-  res.json(await accountService.linkWallet(req.user, req.body.walletAddress));
+  res.json(
+    await accountService.linkWallet(
+      req.user,
+      req.body.walletAddress,
+      req.body.signature,
+    ),
+  );
 });
 
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {

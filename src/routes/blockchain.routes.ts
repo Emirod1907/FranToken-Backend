@@ -9,6 +9,7 @@ import {
   kycSchema,
   mintSchema,
   pauseSchema,
+  subscriptionSchema,
 } from "../validators/blockchain.validator";
 
 const router = Router();
@@ -33,6 +34,15 @@ router.post(
   requireAdmin,
   validateBody(distributeSchema),
   controller.distribute,
+);
+
+// Emisión mediante C4 (compra conciliada por el verificador de pagos).
+router.post(
+  "/subscriptions/issue",
+  requireAuth,
+  requireAdmin,
+  validateBody(subscriptionSchema),
+  controller.issueSubscription,
 );
 
 export default router;

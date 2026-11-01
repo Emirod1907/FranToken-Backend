@@ -73,6 +73,8 @@ export const env = {
       identityRegistry: process.env.IDENTITY_REGISTRY_ADDRESS ?? "",
       compliance: process.env.FRANCHISE_COMPLIANCE_ADDRESS ?? "",
       paymentToken: process.env.PAYMENT_TOKEN_ADDRESS ?? "",
+      // C4 — InvestmentAgreement (emisión mediante compra conciliada).
+      investmentAgreement: process.env.INVESTMENT_AGREEMENT_ADDRESS ?? "",
     },
   },
 } as const;

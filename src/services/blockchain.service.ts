@@ -5,10 +5,15 @@ import {
   franchiseToken,
   getProvider,
   identityRegistry,
+  investmentAgreement,
   isWritingEnabled,
   paymentToken,
 } from "../blockchain/client";
 import { env } from "../config/env";
+import { Purchase } from "../models/purchase.model";
+import { ApiError } from "../utils/ApiError";
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -133,7 +138,6 @@ export async function getComplianceInfo() {
 export async function getHolder(addressInput: string) {
   const address = assertAddress(addressInput, "address");
   const token = franchiseToken();
-  const registry = identityRegistry();
   const dec = await tokenDecimals();
   const payDec = await payDecimals();
 
@@ -146,25 +150,10 @@ export async function getHolder(addressInput: string) {
       token.withdrawnRevenueOf(address),
     ]);
 
-  // El registro puede no tener la wallet: capturamos y devolvemos valores neutros.
-  let verified = false;
-  let country = 0;
-  let kycValidUntil = 0;
-  let onchainIdentity = "0x0000000000000000000000000000000000000000";
-  try {
-    const [v, c, k, id] = await Promise.all([
-      registry.isVerified(address),
-      registry.investorCountry(address),
-      registry.kycValidUntil(address),
-      registry.identity(address),
-    ]);
-    verified = v;
-    country = Number(c);
-    kycValidUntil = Number(k);
-    onchainIdentity = id as string;
-  } catch {
-    // wallet no registrada
-  }
+  // Estado KYC EXPLÍCITO. Un fallo de consulta (RPC caído, registry mal
+  // configurado) NO equivale a "no verificado": se informa como UNAVAILABLE,
+  // para que quien decida sobre esa verificación pueda distinguirlo y bloquear.
+  const kyc = await getKycStatus(address);
 
   return {
     address,
@@ -175,13 +164,56 @@ export async function getHolder(addressInput: string) {
       withdrawable: amount(withdrawable, payDec),
       withdrawn: amount(withdrawn, payDec),
     },
-    kyc: {
-      verified,
-      country,
-      kycValidUntil: kycValidUntil === 0 ? null : kycValidUntil,
-      onchainIdentity,
-    },
+    kyc,
   };
+}
+
+export type KycStatus = "VERIFIED" | "NOT_REGISTERED" | "EXPIRED" | "UNAVAILABLE";
+
+export async function getKycStatus(address: string): Promise<{
+  status: KycStatus;
+  verified: boolean | null;
+  country: number | null;
+  kycValidUntil: number | null;
+  onchainIdentity: string | null;
+}> {
+  const registry = identityRegistry();
+  try {
+    const registered: boolean = await registry.contains(address);
+    if (!registered) {
+      return {
+        status: "NOT_REGISTERED",
+        verified: false,
+        country: null,
+        kycValidUntil: null,
+        onchainIdentity: null,
+      };
+    }
+    const [k, c, id] = await Promise.all([
+      registry.kycValidUntil(address),
+      registry.investorCountry(address),
+      registry.identity(address),
+    ]);
+    const validUntil = Number(k);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expired = validUntil !== 0 && validUntil < nowSec;
+    return {
+      status: expired ? "EXPIRED" : "VERIFIED",
+      verified: !expired,
+      country: Number(c),
+      kycValidUntil: validUntil === 0 ? null : validUntil,
+      onchainIdentity: id as string,
+    };
+  } catch {
+    // Indisponibilidad (RPC/registry): no se puede afirmar nada sobre el KYC.
+    return {
+      status: "UNAVAILABLE",
+      verified: null,
+      country: null,
+      kycValidUntil: null,
+      onchainIdentity: null,
+    };
+  }
 }
 
 // ─── Escrituras (agente) ─────────────────────────────────────
@@ -207,9 +239,85 @@ export async function registerIdentity(input: {
 
 export async function mint(input: { address: string; amount: string }) {
   const address = assertAddress(input.address, "address");
+  // #1 — Si hay un controlador de emisión (C4) configurado, el mint directo NO
+  // es la vía válida: la emisión debe pasar por la compra conciliada. Avisamos
+  // claramente en vez de dejar que la transacción revierta on-chain.
+  const controller: string = await franchiseToken().issuanceController();
+  if (controller && controller.toLowerCase() !== ZERO_ADDRESS) {
+    throw ApiError.conflict(
+      "La emisión está bajo el controlador C4 (InvestmentAgreement). Usá " +
+        "POST /api/blockchain/subscriptions/issue (compra conciliada) en lugar del mint directo.",
+    );
+  }
   const value = parseUnits(input.amount, await tokenDecimals());
   const hash = await send(franchiseToken(true).mint(address, value));
   return { txHash: hash };
+}
+
+/**
+ * #1/#3 — Emite participaciones mediante C4 (InvestmentAgreement.issueAfterPayment),
+ * tras una compra conciliada por el verificador de pagos.
+ *
+ * Idempotente: persiste la intención ANTES de enviar la transacción y, ante un
+ * reintento con el mismo purchaseId ya confirmado, devuelve el resultado previo
+ * sin reemitir. El contrato además impone unicidad de purchaseId/paymentReference,
+ * así que un reintento tras una respuesta perdida no duplica la emisión.
+ *
+ * Requisitos de despliegue: el firmante del servidor debe ser el `paymentVerifier`
+ * del contrato y el token debe tener a este InvestmentAgreement como
+ * `issuanceController`. `units` y `paidAmountMinor` son enteros (unidades del
+ * token / unidades mínimas de la moneda).
+ */
+export async function issueSubscription(input: {
+  purchaseId: string;
+  paymentReference: string;
+  investorAddress: string;
+  units: string;
+  paidAmountMinor: string;
+  evidenceHash: string;
+  createdByUserId?: string | null;
+}) {
+  const investor = assertAddress(input.investorAddress, "investorAddress");
+
+  let record = await Purchase.findOne({ where: { purchaseId: input.purchaseId } });
+  if (record && record.status === "confirmed") {
+    return { purchase: record.toContract(), idempotent: true };
+  }
+  if (!record) {
+    record = await Purchase.create({
+      purchaseId: input.purchaseId,
+      paymentReference: input.paymentReference,
+      investorAddress: investor,
+      units: input.units,
+      paidAmountMinor: input.paidAmountMinor,
+      evidenceHash: input.evidenceHash,
+      status: "pending",
+      createdByUserId: input.createdByUserId ?? null,
+    });
+  }
+
+  try {
+    const hash = await send(
+      investmentAgreement(true).issueAfterPayment(
+        input.purchaseId,
+        input.paymentReference,
+        investor,
+        BigInt(input.units),
+        BigInt(input.paidAmountMinor),
+        input.evidenceHash,
+      ),
+    );
+    record.status = "confirmed";
+    record.txHash = hash;
+    record.error = null;
+    await record.save();
+    return { purchase: record.toContract(), idempotent: false };
+  } catch (err) {
+    record.status = "failed";
+    record.error = err instanceof Error ? err.message : String(err);
+    await record.save();
+    throw err;
+  }
 }
 
 export async function setAddressFrozen(input: { address: string; frozen: boolean }) {

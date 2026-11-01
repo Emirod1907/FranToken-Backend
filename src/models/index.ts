@@ -4,9 +4,11 @@ import { FranchiseApplication } from "./franchiseApplication.model";
 import { FranchisePerformance } from "./franchisePerformance.model";
 import { Profile } from "./profile.model";
 import { Project } from "./project.model";
+import { Purchase } from "./purchase.model";
 import { TokenActivity } from "./tokenActivity.model";
 import { TokenHolding } from "./tokenHolding.model";
 import { User } from "./user.model";
+import { WalletChallenge } from "./walletChallenge.model";
 
 // ─── Asociaciones ────────────────────────────────────────────
 
@@ -51,6 +53,13 @@ TokenHolding.hasMany(TokenActivity, {
 });
 TokenActivity.belongsTo(TokenHolding, { foreignKey: "holdingId", as: "holding" });
 
+User.hasOne(WalletChallenge, {
+  foreignKey: "userId",
+  as: "walletChallenge",
+  onDelete: "CASCADE",
+});
+WalletChallenge.belongsTo(User, { foreignKey: "userId", as: "user" });
+
 export {
   sequelize,
   User,
@@ -61,6 +70,8 @@ export {
   TokenHolding,
   TokenActivity,
   Project,
+  Purchase,
+  WalletChallenge,
 };
 
 /**
