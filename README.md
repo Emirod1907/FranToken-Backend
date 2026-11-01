@@ -12,6 +12,12 @@ API REST en **Node.js + Express + TypeScript + MySQL + Sequelize** que implement
 
 > **Alcance.** Es un prototipo técnico alineado al estado del proyecto FranToken: las marcas y sus escenarios de ROI son datos de muestra, no ofertas reales. Las tenencias demo (`TokenHolding`) se sirven como datos de solo lectura; en un sistema real una posición debe provenir de un proceso de pago/emisión conciliado, nunca de la UI. Importes en `DECIMAL`, nunca float. El módulo blockchain (abajo) conecta con los contratos ERC-3643 del repo `FranToken`: las lecturas on-chain están disponibles al configurarse, pero la emisión, los pagos y las distribuciones están **apagados por defecto** y requieren aprobación, autorización y auditoría antes de usarse con valores reales.
 
+## Documentación de negocio
+
+[Lógica de negocio](docs/business/BUSINESS-LOGIC.md), [ciclos de vida del proyecto y token](docs/business/LIFECYCLES.md), [estado técnico y brechas](docs/business/IMPLEMENTATION-STATUS.md), [decisiones pendientes](docs/business/DECISIONS.md), [requisitos del backend](docs/business/BACKEND-REQUIREMENTS.md) y [fuentes recibidas](docs/business/source/README.md).
+
+El precio de suscripción es **fijo: USD 10 por token más fees blockchain**, informados por separado. El DTE es un modelo de dominio; la API actual no implementa campaña, conciliación de compras, devoluciones ni liquidación. El endpoint `mint` llama al token directamente y no integra C4: no representa una compra conciliada y será rechazado si C4 es el controlador exclusivo de emisión.
+
 ## Requisitos
 
 - Node.js ≥ 18 (probado con v24)
