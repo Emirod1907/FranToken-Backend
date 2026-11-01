@@ -13,8 +13,8 @@ import { sequelize } from "../config/database";
  * verificada; los escenarios de ROI son simulaciones, no ofertas reales.
  */
 export class Project extends Model<
-  InferAttributes<Project>,
-  InferCreationAttributes<Project>
+  InferAttributes<Project, { omit: "isOnChain" }>,
+  InferCreationAttributes<Project, { omit: "isOnChain" }>
 > {
   declare id: string; // slug estable usado en /marketplace/[slug]
   declare name: string;
@@ -28,10 +28,28 @@ export class Project extends Model<
   declare palette: "lime" | "peach" | "lavender" | "mint";
   declare annualizedRoiScenario: number[];
   declare featuredRank: CreationOptional<number>;
+  // ── Capa de emisión/MVP ──
+  // Estado del proyecto: publicada (admite compra) -> en_operacion (admite
+  // distribuciones) -> cerrada (no admite compras).
+  declare status: CreationOptional<"publicada" | "en_operacion" | "cerrada">;
+  declare unitPriceMinor: CreationOptional<string>; // precio por token en unidades mínimas
+  declare currency: CreationOptional<string>;
+  declare currencyDecimals: CreationOptional<number>;
+  declare tokenSymbol: CreationOptional<string | null>;
+  declare tokenAddress: CreationOptional<string | null>;
+  declare investmentAgreementAddress: CreationOptional<string | null>;
+  declare totalUnits: CreationOptional<string | null>; // oferta total (null = sin tope)
+  declare unitsSold: CreationOptional<string>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  /** true si la emisión se hace on-chain (proyecto cableado a C4). */
+  get isOnChain(): boolean {
+    return Boolean(this.investmentAgreementAddress && this.tokenAddress);
+  }
+
   toContract() {
+    const decimals = this.currencyDecimals;
     return {
       id: this.id,
       name: this.name,
@@ -44,8 +62,38 @@ export class Project extends Model<
       ...(this.logoUrl ? { logoUrl: this.logoUrl } : {}),
       palette: this.palette,
       annualizedRoiScenario: this.annualizedRoiScenario,
+      // Capa MVP
+      status: this.status,
+      price: {
+        minor: this.unitPriceMinor,
+        currency: this.currency,
+        decimals,
+        display: majorStr(this.unitPriceMinor, decimals),
+      },
+      token: {
+        symbol: this.tokenSymbol,
+        address: this.tokenAddress,
+        investmentAgreement: this.investmentAgreementAddress,
+        onChain: this.isOnChain,
+      },
+      availability: {
+        totalUnits: this.totalUnits,
+        unitsSold: this.unitsSold,
+        unitsAvailable:
+          this.totalUnits === null
+            ? null
+            : (BigInt(this.totalUnits) - BigInt(this.unitsSold)).toString(),
+      },
     };
   }
+}
+
+function majorStr(minorValue: string, decimals: number): string {
+  const v = BigInt(minorValue);
+  const abs = v.toString().padStart(decimals + 1, "0");
+  const intPart = abs.slice(0, abs.length - decimals);
+  const fracPart = decimals ? "." + abs.slice(abs.length - decimals) : "";
+  return intPart + fracPart;
 }
 
 Project.init(
@@ -78,6 +126,35 @@ Project.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    status: {
+      type: DataTypes.ENUM("publicada", "en_operacion", "cerrada"),
+      allowNull: false,
+      defaultValue: "publicada",
+    },
+    unitPriceMinor: {
+      type: DataTypes.STRING(40),
+      allowNull: false,
+      defaultValue: "10000000", // USD 10 con 6 decimales
+    },
+    currency: {
+      type: DataTypes.STRING(3),
+      allowNull: false,
+      defaultValue: "USD",
+    },
+    currencyDecimals: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 6,
+    },
+    tokenSymbol: { type: DataTypes.STRING(40), allowNull: true },
+    tokenAddress: { type: DataTypes.STRING(42), allowNull: true },
+    investmentAgreementAddress: { type: DataTypes.STRING(42), allowNull: true },
+    totalUnits: { type: DataTypes.STRING(40), allowNull: true },
+    unitsSold: {
+      type: DataTypes.STRING(40),
+      allowNull: false,
+      defaultValue: "0",
     },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,

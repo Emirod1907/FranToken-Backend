@@ -1,17 +1,12 @@
 import { assertDatabaseConnection, sequelize } from "../config/database";
-import {
-  Profile,
-  Project,
-  TokenActivity,
-  TokenHolding,
-  User,
-  syncModels,
-} from "../models";
+import { Profile, Project, Purchase, User, syncModels } from "../models";
+import * as distribution from "../services/distribution.service";
+import * as investment from "../services/investment.service";
 import { hashPassword } from "../utils/password";
 
 // Catálogo del marketplace (espejo de marketplace.constants.ts del frontend).
 // Solo la existencia de las marcas y sus programas de franquicia está verificada;
-// los escenarios de ROI son simulaciones, no ofertas reales.
+// los escenarios de ROI son simulaciones, no ofertas reales. Precio MVP: USD 10.
 const projects = [
   {
     id: "mcdonalds",
@@ -29,6 +24,9 @@ const projects = [
     palette: "lime" as const,
     annualizedRoiScenario: [-3, 2, 5, 4, 7],
     featuredRank: 0,
+    status: "publicada" as const,
+    tokenSymbol: "MCD",
+    unitPriceMinor: "10000000",
   },
   {
     id: "burger-king",
@@ -44,6 +42,9 @@ const projects = [
     palette: "peach" as const,
     annualizedRoiScenario: [-5, 1, 4, 6, 5],
     featuredRank: 1,
+    status: "publicada" as const,
+    tokenSymbol: "BK",
+    unitPriceMinor: "10000000",
   },
   {
     id: "havanna",
@@ -60,6 +61,10 @@ const projects = [
     palette: "lavender" as const,
     annualizedRoiScenario: [-2, 3, 6, 5, 8],
     featuredRank: 2,
+    // En operación para demostrar el circuito de distribución.
+    status: "en_operacion" as const,
+    tokenSymbol: "HAV",
+    unitPriceMinor: "10000000",
   },
   {
     id: "pizza-hut",
@@ -76,6 +81,9 @@ const projects = [
     palette: "mint" as const,
     annualizedRoiScenario: [-4, 0, 3, 5, 6],
     featuredRank: 3,
+    status: "publicada" as const,
+    tokenSymbol: "PZH",
+    unitPriceMinor: "10000000",
   },
 ];
 
@@ -89,16 +97,16 @@ async function seedProjects() {
   console.log(`[seed] ${projects.length} proyectos del marketplace listos.`);
 }
 
-async function seedDemoUser() {
+async function seedDemoUserAndCircuit() {
   const [user] = await User.findOrCreate({
     where: { email: DEMO_EMAIL },
     defaults: {
       email: DEMO_EMAIL,
       displayName: "Inversor demo",
       passwordHash: await hashPassword(DEMO_PASSWORD),
-      // Rol admin solo para la demo local: permite probar las rutas de agente
-      // on-chain (que además exigen BLOCKCHAIN_ALLOW_WRITES y una clave de agente).
+      // Admin para probar las rutas de administración; KYC habilitado para comprar.
       role: "admin",
+      kycApproved: true,
     },
   });
 
@@ -113,74 +121,42 @@ async function seedDemoUser() {
     },
   });
 
-  // Tenencias de ejemplo (espejo de demoHoldings). En un sistema real provienen
-  // de un proceso de pago/emisión conciliado, no de la UI.
-  const existing = await TokenHolding.count({ where: { userId: user.id } });
-  if (existing === 0) {
-    const miga = await TokenHolding.create({
-      userId: user.id,
-      projectName: "Miga",
-      symbol: "MIGA · demo",
-      quantity: 18,
-      currency: "USD",
-      investedAmount: 4500,
+  // Siembra el circuito una sola vez: compra (pago simulado) + distribución.
+  const purchases = await Purchase.count({ where: { userId: user.id } });
+  if (purchases === 0) {
+    await investment.buyTokens(user, { projectId: "havanna", units: 12 });
+    await investment.buyTokens(user, { projectId: "mcdonalds", units: 5 });
+    // Distribución de ejemplo para la franquicia en operación.
+    await distribution.distribute(user.id, {
+      projectId: "havanna",
+      periodId: "2026-10",
+      amount: "120",
+      memo: "Ingreso distribuible octubre (demo)",
     });
-    await TokenActivity.bulkCreate([
-      {
-        holdingId: miga.id,
-        occurredAt: "2026-09-12",
-        kind: "Compra de ejemplo",
-        quantity: 8,
-        unitPrice: 250,
-        amount: 2000,
-        currency: "USD",
-        reference: "DEMO-MIG-002",
-      },
-      {
-        holdingId: miga.id,
-        occurredAt: "2026-07-04",
-        kind: "Compra de ejemplo",
-        quantity: 10,
-        unitPrice: 250,
-        amount: 2500,
-        currency: "USD",
-        reference: "DEMO-MIG-001",
-      },
-    ]);
-
-    const casa = await TokenHolding.create({
-      userId: user.id,
-      projectName: "Casa Norte",
-      symbol: "CASA · demo",
-      quantity: 6,
-      currency: "USD",
-      investedAmount: 1800,
-    });
-    await TokenActivity.create({
-      holdingId: casa.id,
-      occurredAt: "2026-08-21",
-      kind: "Compra de ejemplo",
-      quantity: 6,
-      unitPrice: 300,
-      amount: 1800,
-      currency: "USD",
-      reference: "DEMO-CAS-001",
-    });
+    console.log("[seed] Circuito demo: compras + distribución listas.");
   }
 
   console.log(`[seed] Usuario demo listo: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
-async function run() {
+/** Siembra idempotente, reutilizable desde el arranque del server (SEED_ON_BOOT). */
+export async function seedAll() {
+  await seedProjects();
+  await seedDemoUserAndCircuit();
+}
+
+async function runCli() {
   await assertDatabaseConnection();
   await syncModels();
-  await seedProjects();
-  await seedDemoUser();
+  await seedAll();
   await sequelize.close();
   console.log("[seed] Completado.");
 }
 
-run().catch((err) => {
-  console.error("[seed] Error:", err);
-  process.exit(1);
-});
+// Solo se ejecuta cuando se corre como script (no al importarlo desde el server).
+if (require.main === module) {
+  runCli().catch((err) => {
+    console.error("[seed] Error:", err);
+    process.exit(1);
+  });
+}

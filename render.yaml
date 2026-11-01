@@ -1,0 +1,38 @@
+# Render Blueprint — provisiona la API (Docker) + PostgreSQL con sus variables.
+# Uso: Render Dashboard -> New -> Blueprint -> elegí este repo y la rama.
+# Tras el primer arranque (logs "Datos demo sembrados"), poné DB_SYNC y
+# SEED_ON_BOOT en false para no re-sincronizar/sembrar en cada deploy.
+services:
+  - type: web
+    name: frantoken-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: frantoken-db
+          property: connectionString
+      # Conexión interna (misma región): no requiere SSL. Si hubiera error de
+      # SSL, cambiar a true.
+      - key: DB_SSL
+        value: "false"
+      # Primer deploy: crear tablas y sembrar datos demo. Luego poner en false.
+      - key: DB_SYNC
+        value: "true"
+      - key: SEED_ON_BOOT
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://frantoken-frontend-git-main-mrtfogs-projects.vercel.app
+      - key: BLOCKCHAIN_ENABLED
+        value: "false"
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: frantoken-db
+    plan: free

@@ -17,6 +17,8 @@ export const franchiseTokenAbi = [
   "function paused() view returns (bool)",
   "function paymentToken() view returns (address)",
   "function onchainID() view returns (address)",
+  // Controlador de emisión (C4). Si != address(0), mint directo revierte.
+  "function issuanceController() view returns (address)",
   "function isAgent(address) view returns (bool)",
   "function balanceOf(address) view returns (uint256)",
   "function isFrozen(address) view returns (bool)",
@@ -62,6 +64,17 @@ export const complianceAbi = [
   "function isCountryBlocked(uint16) view returns (bool)",
   "function getTokenBound() view returns (address)",
   "function canTransfer(address from, address to, uint256 amount) view returns (bool)",
+] as const;
+
+// C4 — InvestmentAgreement: aceptación de términos + emisión tras pago conciliado.
+export const investmentAgreementAbi = [
+  "function unitPriceMinor() view returns (uint256)",
+  "function paymentVerifier() view returns (address)",
+  "function acceptedTerms(address) view returns (bool)",
+  "function issuedPurchase(bytes32) view returns (bool)",
+  "function usedPaymentReference(bytes32) view returns (bool)",
+  "function issueAfterPayment(bytes32 purchaseId, bytes32 paymentReference, address investor, uint256 units, uint256 paidAmountMinor, bytes32 evidenceHash)",
+  "event PurchaseIssued(bytes32 indexed purchaseId, address indexed investor, bytes32 indexed paymentReference, uint256 units, uint256 grossMinor, uint256 platformFeeMinor, uint256 trustNetMinor, bytes32 evidenceHash)",
 ] as const;
 
 export const erc20Abi = [

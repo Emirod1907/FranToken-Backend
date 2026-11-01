@@ -1,4 +1,5 @@
-import { getAddress } from "ethers";
+import { randomUUID } from "crypto";
+import { getAddress, verifyMessage } from "ethers";
 import { sequelize } from "../config/database";
 import { ApplicationDraft } from "../models/applicationDraft.model";
 import { FranchiseApplication } from "../models/franchiseApplication.model";
@@ -7,6 +8,7 @@ import { Profile } from "../models/profile.model";
 import { TokenActivity } from "../models/tokenActivity.model";
 import { TokenHolding } from "../models/tokenHolding.model";
 import { User } from "../models/user.model";
+import { WalletChallenge } from "../models/walletChallenge.model";
 import { ApiError } from "../utils/ApiError";
 import type {
   FranchiseApplicationInput,
@@ -119,18 +121,82 @@ export async function clearDraft(userId: string) {
   await ApplicationDraft.destroy({ where: { userId } });
 }
 
-// ─── Wallet vinculada ────────────────────────────────────────
+// ─── Wallet vinculada (con prueba de control) ────────────────
 
-export async function linkWallet(user: User, walletAddress: string) {
-  // Normaliza a checksum para almacenar/comparar de forma consistente.
-  const checksummed = getAddress(walletAddress);
-  const taken = await User.findOne({ where: { walletAddress: checksummed } });
+const CHALLENGE_TTL_MS = 10 * 60 * 1000;
+
+function walletMessage(
+  userId: string,
+  address: string,
+  nonce: string,
+  expiresAt: Date,
+): string {
+  return (
+    "FranToken: probá el control de tu wallet para vincularla.\n" +
+    `Cuenta: ${userId}\n` +
+    `Wallet: ${address}\n` +
+    `Nonce: ${nonce}\n` +
+    `Vence: ${expiresAt.toISOString()}`
+  );
+}
+
+/**
+ * #11 — Paso 1: emite un desafío. El usuario debe firmar el mensaje devuelto con
+ * su wallet (personal_sign) para demostrar que la controla.
+ */
+export async function requestWalletChallenge(user: User, walletAddress: string) {
+  const address = getAddress(walletAddress);
+  const nonce = randomUUID();
+  const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
+  const [challenge] = await WalletChallenge.findOrCreate({
+    where: { userId: user.id },
+    defaults: { userId: user.id, address, nonce, expiresAt },
+  });
+  challenge.set({ address, nonce, expiresAt });
+  await challenge.save();
+  return { message: walletMessage(user.id, address, nonce, expiresAt), expiresAt };
+}
+
+/**
+ * #11 — Paso 2: verifica la firma del desafío antes de vincular. Sin firma válida
+ * y vigente no se asocia la wallet (ya no se acepta una dirección sin prueba).
+ */
+export async function linkWallet(
+  user: User,
+  walletAddress: string,
+  signature: string,
+) {
+  const address = getAddress(walletAddress);
+  const challenge = await WalletChallenge.findOne({ where: { userId: user.id } });
+  if (!challenge || challenge.address !== address) {
+    throw ApiError.badRequest(
+      "No hay un desafío vigente para esa wallet. Pedí uno nuevo primero.",
+    );
+  }
+  if (challenge.expiresAt.getTime() < Date.now()) {
+    throw ApiError.badRequest("El desafío venció. Pedí uno nuevo.");
+  }
+
+  const message = walletMessage(user.id, address, challenge.nonce, challenge.expiresAt);
+  let recovered: string;
+  try {
+    recovered = getAddress(verifyMessage(message, signature));
+  } catch {
+    throw ApiError.badRequest("Firma inválida.");
+  }
+  if (recovered !== address) {
+    throw ApiError.badRequest("La firma no corresponde a esa wallet.");
+  }
+
+  const taken = await User.findOne({ where: { walletAddress: address } });
   if (taken && taken.id !== user.id) {
     throw ApiError.conflict("Esa wallet ya está vinculada a otra cuenta.");
   }
-  user.walletAddress = checksummed;
+
+  user.walletAddress = address;
   await user.save();
-  return { walletAddress: checksummed };
+  await challenge.destroy();
+  return { walletAddress: address };
 }
 
 export function getWallet(user: User) {

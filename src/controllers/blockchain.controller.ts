@@ -55,3 +55,14 @@ export const pause = asyncHandler(async (req: Request, res: Response) => {
 export const distribute = asyncHandler(async (req: Request, res: Response) => {
   res.status(202).json(await blockchain.distributeRevenue(req.body));
 });
+
+// Emisión mediante C4 (compra conciliada). Idempotente por purchaseId.
+export const issueSubscription = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await blockchain.issueSubscription({
+      ...req.body,
+      createdByUserId: req.user?.id ?? null,
+    });
+    res.status(result.idempotent ? 200 : 202).json(result);
+  },
+);

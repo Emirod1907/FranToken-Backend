@@ -20,6 +20,8 @@ export class User extends Model<
   declare role: CreationOptional<"investor" | "admin">;
   // Wallet EVM vinculada (checksum). Permite consultar tenencias on-chain.
   declare walletAddress: CreationOptional<string | null>;
+  // KYC manual de demostración: un admin lo habilita; se exige para comprar.
+  declare kycApproved: CreationOptional<boolean>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -54,6 +56,11 @@ User.init(
       type: DataTypes.STRING(42),
       allowNull: true,
       unique: true,
+    },
+    kycApproved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,

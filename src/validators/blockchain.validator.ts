@@ -37,6 +37,37 @@ export const distributeSchema = z.object({
   memo: z.string().trim().min(1).max(120),
 });
 
-export const walletSchema = z.object({
+// Hash bytes32 (0x + 64 hex) y entero como texto (unidades mínimas / unidades).
+const bytes32 = z
+  .string()
+  .trim()
+  .regex(/^0x[a-fA-F0-9]{64}$/, "Debe ser un hash bytes32 (0x + 64 hex).");
+const integerString = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, "Debe ser un entero como texto.");
+
+// C4 — emisión tras compra conciliada.
+export const subscriptionSchema = z.object({
+  purchaseId: bytes32,
+  paymentReference: bytes32,
+  investorAddress: evmAddress,
+  units: integerString,
+  paidAmountMinor: integerString,
+  evidenceHash: bytes32,
+});
+
+// Firma EIP-191 (personal_sign): 0x + 130 hex.
+const signature = z
+  .string()
+  .trim()
+  .regex(/^0x[a-fA-F0-9]{130}$/, "Firma inválida.");
+
+// Vinculación de wallet con prueba de control (desafío firmado).
+export const walletChallengeSchema = z.object({
   walletAddress: evmAddress,
+});
+export const walletLinkSchema = z.object({
+  walletAddress: evmAddress,
+  signature,
 });

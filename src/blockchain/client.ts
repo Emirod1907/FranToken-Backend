@@ -6,6 +6,7 @@ import {
   erc20Abi,
   franchiseTokenAbi,
   identityRegistryAbi,
+  investmentAgreementAbi,
 } from "./abis";
 
 // Instancias perezosas, memorizadas tras el primer uso.
@@ -89,6 +90,29 @@ export function paymentToken(write = false): Contract {
   const runner = write ? getSigner() : getProvider();
   const address = requireAddress("PAYMENT_TOKEN_ADDRESS", env.blockchain.addresses.paymentToken);
   return new Contract(address, erc20Abi, runner);
+}
+
+export function investmentAgreement(write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  const address = requireAddress("INVESTMENT_AGREEMENT_ADDRESS", env.blockchain.addresses.investmentAgreement);
+  return new Contract(address, investmentAgreementAbi, runner);
+}
+
+// ── Contratos apuntados por dirección (cada proyecto tiene la suya) ──
+
+export function franchiseTokenAt(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "tokenAddress"), franchiseTokenAbi, runner);
+}
+
+export function investmentAgreementAt(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "investmentAgreement"), investmentAgreementAbi, runner);
+}
+
+export function erc20At(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "paymentToken"), erc20Abi, runner);
 }
 
 /** Normaliza y valida una dirección EVM; lanza 400 si es inválida. */

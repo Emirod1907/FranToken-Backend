@@ -133,7 +133,8 @@ Además, para la integración on-chain:
 | Método | Ruta | Cuerpo | Respuesta |
 |---|---|---|---|
 | GET | `/account/wallet` | — | `{ walletAddress \| null }` |
-| PUT | `/account/wallet` | `{ walletAddress }` | `{ walletAddress }` (checksum; 409 si ya está vinculada a otra cuenta) |
+| POST | `/account/wallet/challenge` | `{ walletAddress }` | `{ message, expiresAt }` — mensaje a firmar con la wallet |
+| PUT | `/account/wallet` | `{ walletAddress, signature }` | `{ walletAddress }` (verifica la firma del desafío; 409 si ya está vinculada) |
 
 ### Marketplace (público)
 | Método | Ruta | Respuesta |
@@ -156,6 +157,9 @@ Puente con los contratos del repo `FranToken` (Hardhat). Requiere `BLOCKCHAIN_EN
 | POST | `/blockchain/freeze` | admin+agente | Congela/descongela una wallet |
 | POST | `/blockchain/pause` | admin+agente | Pausa/reanuda el token |
 | POST | `/blockchain/distribute` | admin+agente | `approve` + `distributeRevenue(amount, memo)` |
+| POST | `/blockchain/subscriptions/issue` | admin+verificador | Emisión por C4 (`issueAfterPayment`) tras compra conciliada; idempotente por `purchaseId` |
+
+La emisión real pasa por **C4 (InvestmentAgreement)**: `/subscriptions/issue` persiste la compra (`purchaseId`, `paymentReference`, inversor, unidades, importe y hash de evidencia) antes de enviar la transacción y es idempotente ante reintentos. El `mint` directo queda solo para despliegues sin controlador C4: si el token tiene `issuanceController`, ese endpoint responde `409` y remite a la suscripción.
 
 Las operaciones de escritura (`kyc/mint/freeze/pause/distribute`) exigen las **tres** condiciones: usuario con rol `admin`, `BLOCKCHAIN_ALLOW_WRITES=true` y `BLOCKCHAIN_AGENT_PRIVATE_KEY` configurada (la clave firma como agente del contrato). Responden `202` con los hashes de transacción. Las cantidades se envían como texto decimal (p. ej. `"100"`) y se escalan con los decimales del contrato. **El reclamo de ingresos (`claimRevenue`) lo hace el inversor desde su propia wallet, no el servidor.**
 
