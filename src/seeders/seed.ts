@@ -139,16 +139,24 @@ async function seedDemoUserAndCircuit() {
   console.log(`[seed] Usuario demo listo: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
-async function run() {
-  await assertDatabaseConnection();
-  await syncModels();
+/** Siembra idempotente, reutilizable desde el arranque del server (SEED_ON_BOOT). */
+export async function seedAll() {
   await seedProjects();
   await seedDemoUserAndCircuit();
+}
+
+async function runCli() {
+  await assertDatabaseConnection();
+  await syncModels();
+  await seedAll();
   await sequelize.close();
   console.log("[seed] Completado.");
 }
 
-run().catch((err) => {
-  console.error("[seed] Error:", err);
-  process.exit(1);
-});
+// Solo se ejecuta cuando se corre como script (no al importarlo desde el server).
+if (require.main === module) {
+  runCli().catch((err) => {
+    console.error("[seed] Error:", err);
+    process.exit(1);
+  });
+}

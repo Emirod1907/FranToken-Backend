@@ -46,9 +46,11 @@ export const env = {
     name: process.env.DB_NAME ?? "frantoken",
     user: process.env.DB_USER ?? "root",
     password: process.env.DB_PASSWORD ?? "",
-    // SSL requerido por casi todos los hosts administrados (Supabase incluido).
+    // SSL requerido por casi todos los hosts administrados (Supabase/Render).
     ssl: bool("DB_SSL", false),
     sync: bool("DB_SYNC", true),
+    // Siembra datos demo al arrancar si faltan (útil en hosts sin "run command").
+    seedOnBoot: bool("SEED_ON_BOOT", false),
     logging: bool("DB_LOGGING", false),
   },
   auth: {
