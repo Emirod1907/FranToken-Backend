@@ -1,0 +1,282 @@
+
+=== Página 1 ===
+FranToken: estado vs. modelo de negocio
+ 
+Oct 29, 2026
+ · 
+ 
+@Emiliano
+Los cuatro contratos (C1–C4) ya existen en la rama develop, con 51 tests pasando. Para
+cubrir el modelo de negocio faltan: campaña con cierre y devoluciones, prelación
+completa de pagos con reservas, comisiones de FranToken por gestión y resultado, y la
+definición del derecho económico del inversor.
+Qué está implementado
+C1 y C2 liquidan pagos en stablecoin dentro de la cadena; C3 y C4 sólo registran y
+calculan, porque el cobro de las compras es externo.
+Contrato
+Partes
+Qué hace
+Qué no hace
+C1 FranchiseAgreement
+Franquiciante
+↔
+ fideicomiso
+Marca, know-how
+versionado,
+territorio, duración
+y renovación, canon
+de entrada, regalía
+y fondo de
+publicidad con
+mínimo,
+inspecciones de
+estándares,
+causales de
+terminación
+verificables
+—
+C2 OperatingAgreement
+Fideicomiso 
+↔
+operadora
+Reportes de
+ventas, costos y
+personal; KPIs;
+proveedores y
+compras con
+umbral; honorarios
+fijo + éxito;
+auditorías; seguro;
+terminación si cae
+el C1
+Reemplazo de la
+operadora; control
+de presupuesto
+FranToken estado vs. modelo de negocio
+Page 
+1
+ of 
+5
+
+=== Página 2 ===
+Qué falta respecto del modelo de negocio
+Las brechas siguen las etapas de la sección 4 del documento. La columna Decisión remite
+al registro D01–D12 de docs/DECISIONS.md.
+Contrato
+Partes
+Qué hace
+Qué no hace
+C3
+PlatformServicesAgreement
+Fideicomiso 
+↔
+FranToken SAS
+Firma de ambas
+partes y cálculo de
+la comisión: 0,5 %
+de cada compra
+(USD 0,05 por
+token de USD 10)
+Cobro; comisión
+por gestión o por
+resultado
+C4 InvestmentAgreement
+Fideicomiso 
+↔
+inversor
+Aceptación de
+términos por wallet;
+emisión de tokens
+una sola vez por
+compra, tras la
+conciliación del
+pago por un
+verificador externo
+Recibir fondos;
+devoluciones;
+fórmula del
+derecho
+económico
+FranchiseToken (ERC-3643)
+—
+KYC,
+congelamiento,
+límites, lock-up;
+reparto a prorrata;
+bloquea el reparto
+si C1 o C2 tienen
+pagos vencidos;
+sólo el C4 puede
+emitir
+Cálculo de la caja
+distribuible; corte
+de titulares
+Etapa del modelo
+Estado en el código
+Qué falta
+Decisión
+4. Suscripción
+(campaña)
+Compra individual vía C4
+Meta, mínimo, máximo, fecha
+de cierre, sobrecaptación y
+devoluciones si la campaña
+no se completa
+D05
+FranToken estado vs. modelo de negocio
+Page 
+2
+ of 
+5
+
+=== Página 3 ===
+Fuera del código y ya señalado en el documento: encuadre CNV (RG 1069/2025 y RG
+1150/2026), identidad completa con ONCHAINID, auditoría, y elección de red y
+actualización de contratos (D10). El despliegue sólo admite red local.
+Etapa del modelo
+Estado en el código
+Qué falta
+Decisión
+5. Financiación y
+adquisición
+Sólo el canon de entrada,
+al activar el C1
+Presupuesto por rubro
+(canon, obra, equipamiento,
+capital de trabajo,
+contingencias) y registro de
+cada desembolso con su
+comprobante
+D06,
+D08
+6. Operación (C2)
+Completo
+Reemplazo de la operadora
+(traspaso a un nuevo C2) y
+desvíos contra presupuesto
+D07
+6.1 Ingresos de
+FranToken (C3)
+Comisión sobre compras,
+sólo calculada
+Comisión por gestión y por
+resultado; aprobación por el
+fideicomiso; registro de
+pago; prelación (hoy no es
+obligación senior)
+D12
+8. Distribución
+(prelación)
+C1 y C2 vencidos
+bloquean el reparto
+Cascada completa:
+operación → regalías →
+honorarios C2 y C3 →
+reservas → inversores;
+cálculo de la caja distribuible;
+corte de titulares por
+período
+D06
+C4: derechos del
+inversor
+Precio y hash de
+términos
+Fórmula del derecho, plazo,
+condiciones de salida y
+liquidación al cierre;
+aceptación de términos por
+compradores secundarios
+D03,
+D09
+6.4 Gastos
+asociados
+El C4 exige exactamente
+USD 10 × cantidad
+Gastos de emisión,
+tecnología y suscripción que
+se suman al precio
+D12
+7.2 Mercado
+secundario
+Transferencias con reglas
+ERC-3643
+Intercambio atómico token 
+↔
+pago
+D09
+FranToken estado vs. modelo de negocio
+Page 
+3
+ of 
+5
+
+=== Página 4 ===
+Decisión previa: moneda y custodia
+Hay que elegir un solo modelo de dinero antes de construir la prelación, la campaña y las
+devoluciones (D08). Hoy conviven dos: las compras de C3 y C4 se cobran en USD fuera de
+la cadena, mientras C1, C2 y el reparto a inversores pagan en stablecoin dentro de la
+cadena.
+Correcciones a la presentación
+La sección 7.1 de la presentación final es anterior a los contratos C3 y C4 y conviene
+actualizar dos filas:
+Venta inicial de tokens:
+ ya no es mint directo con cobro separado. El C4 emite sólo
+después de que un verificador externo concilia el pago, una vez por compra. Sigue sin
+ser atómica, porque el cobro es externo.
+Comisiones C3:
+ la comisión sobre compras (0,5 %) ya se calcula y queda registrada en
+cada emisión, pero no se cobra en la cadena. Las comisiones por gestión y por
+resultado siguen sin implementarse.
+Las conclusiones (sección 12) deberían reflejar lo mismo.
+Orden de trabajo propuesto
+1. 
+Decidir moneda y custodia (D08) y la fórmula del derecho del inversor (D03, D06): todo
+lo demás depende de esto.
+2. 
+Campaña con meta, cierre y devoluciones.
+3. 
+Prelación completa con reservas y corte de titulares.
+Opción
+Cómo funciona
+Consecuencia
+Todo en
+stablecoin
+El inversor paga en USDC; el
+contrato cobra, separa la comisión
+y entrega el token en una sola
+operación
+Compra, devoluciones y prelación se
+automatizan; exige que el inversor
+opere con stablecoin
+Todo externo
+Bancos y un tercero custodian; la
+cadena sólo registra hechos
+atestados
+Menos automatización; C1, C2 y el
+reparto deben pasar a registro de
+pagos externos
+Mixto
+Cobro externo, conversión a
+stablecoin por el fiduciario para
+pagos y reparto
+Requiere conciliar la conversión y
+definir quién la ejecuta
+FranToken estado vs. modelo de negocio
+Page 
+4
+ of 
+5
+
+=== Página 5 ===
+4. 
+Comisiones de FranToken por gestión y resultado, aprobadas por el fideicomiso.
+5. 
+Registro del uso de fondos y reemplazo de la operadora.
+6. 
+Mercado secundario atómico.
+Además, el trabajo de C3 y C4 está en develop y todavía no en main.
+FranToken estado vs. modelo de negocio
+Page 
+5
+ of 
+5
