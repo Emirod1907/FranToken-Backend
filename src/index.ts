@@ -5,7 +5,10 @@ import { syncModels } from "./models";
 
 async function bootstrap() {
   await assertDatabaseConnection();
-  console.log(`[db] Conectado a MySQL ${env.db.host}:${env.db.port}/${env.db.name}`);
+  const target = env.db.url
+    ? "(DATABASE_URL)"
+    : `${env.db.host}:${env.db.port}/${env.db.name}`;
+  console.log(`[db] Conectado (${env.db.dialect}) ${target}`);
 
   if (env.db.sync) {
     await syncModels();
