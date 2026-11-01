@@ -1,5 +1,6 @@
 import { Router } from "express";
 import accountRoutes from "./account.routes";
+import adminRoutes from "./admin.routes";
 import authRoutes from "./auth.routes";
 import blockchainRoutes from "./blockchain.routes";
 import projectRoutes from "./project.routes";
@@ -14,5 +15,6 @@ router.use("/auth", authRoutes);
 router.use("/account", accountRoutes);
 router.use("/projects", projectRoutes);
 router.use("/blockchain", blockchainRoutes);
+router.use("/admin", adminRoutes);
 
 export default router;

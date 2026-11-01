@@ -98,6 +98,23 @@ export function investmentAgreement(write = false): Contract {
   return new Contract(address, investmentAgreementAbi, runner);
 }
 
+// ── Contratos apuntados por dirección (cada proyecto tiene la suya) ──
+
+export function franchiseTokenAt(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "tokenAddress"), franchiseTokenAbi, runner);
+}
+
+export function investmentAgreementAt(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "investmentAgreement"), investmentAgreementAbi, runner);
+}
+
+export function erc20At(address: string, write = false): Contract {
+  const runner = write ? getSigner() : getProvider();
+  return new Contract(assertAddress(address, "paymentToken"), erc20Abi, runner);
+}
+
 /** Normaliza y valida una dirección EVM; lanza 400 si es inválida. */
 export function assertAddress(value: string, field = "address"): string {
   if (!isAddress(value)) {

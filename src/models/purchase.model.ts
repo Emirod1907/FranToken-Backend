@@ -24,7 +24,7 @@ export class Purchase extends Model<
   declare id: CreationOptional<string>;
   declare purchaseId: string;
   declare paymentReference: string;
-  declare investorAddress: string;
+  declare investorAddress: CreationOptional<string | null>;
   declare units: string;
   declare paidAmountMinor: string;
   declare evidenceHash: string;
@@ -32,6 +32,12 @@ export class Purchase extends Model<
   declare txHash: CreationOptional<string | null>;
   declare error: CreationOptional<string | null>;
   declare createdByUserId: CreationOptional<string | null>;
+  // ── Ligazón MVP ──
+  declare projectId: CreationOptional<string | null>;
+  declare userId: CreationOptional<string | null>;
+  declare mode: CreationOptional<"simulated" | "onchain">;
+  declare unitPriceMinor: CreationOptional<string | null>;
+  declare currency: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -39,12 +45,17 @@ export class Purchase extends Model<
     return {
       purchaseId: this.purchaseId,
       paymentReference: this.paymentReference,
+      projectId: this.projectId,
       investorAddress: this.investorAddress,
       units: this.units,
+      unitPriceMinor: this.unitPriceMinor,
       paidAmountMinor: this.paidAmountMinor,
+      currency: this.currency,
       evidenceHash: this.evidenceHash,
+      mode: this.mode,
       status: this.status,
       txHash: this.txHash,
+      createdAt: this.createdAt?.toISOString?.() ?? null,
     };
   }
 }
@@ -58,7 +69,7 @@ Purchase.init(
     },
     purchaseId: { type: DataTypes.STRING(66), allowNull: false, unique: true },
     paymentReference: { type: DataTypes.STRING(66), allowNull: false, unique: true },
-    investorAddress: { type: DataTypes.STRING(42), allowNull: false },
+    investorAddress: { type: DataTypes.STRING(42), allowNull: true },
     units: { type: DataTypes.STRING(80), allowNull: false },
     paidAmountMinor: { type: DataTypes.STRING(80), allowNull: false },
     evidenceHash: { type: DataTypes.STRING(66), allowNull: false },
@@ -70,6 +81,15 @@ Purchase.init(
     txHash: { type: DataTypes.STRING(66), allowNull: true },
     error: { type: DataTypes.TEXT, allowNull: true },
     createdByUserId: { type: DataTypes.UUID, allowNull: true },
+    projectId: { type: DataTypes.STRING(80), allowNull: true },
+    userId: { type: DataTypes.UUID, allowNull: true },
+    mode: {
+      type: DataTypes.ENUM("simulated", "onchain"),
+      allowNull: false,
+      defaultValue: "simulated",
+    },
+    unitPriceMinor: { type: DataTypes.STRING(40), allowNull: true },
+    currency: { type: DataTypes.STRING(3), allowNull: true },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as accountController from "../controllers/account.controller";
+import * as investmentController from "../controllers/investment.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
 import {
@@ -11,6 +12,7 @@ import {
   walletChallengeSchema,
   walletLinkSchema,
 } from "../validators/blockchain.validator";
+import { buySchema, claimSchema } from "../validators/investment.validator";
 
 const router = Router();
 
@@ -20,7 +22,11 @@ router.use(requireAuth);
 router.get("/profile", accountController.getProfile);
 router.put("/profile", validateBody(profileSchema), accountController.saveProfile);
 
-router.get("/holdings", accountController.getHoldings);
+// Tenencias y circuito de inversión (compra -> tenencias -> cobro).
+router.get("/holdings", investmentController.getHoldings);
+router.get("/purchases", investmentController.listPurchases);
+router.post("/purchases", validateBody(buySchema), investmentController.buy);
+router.post("/revenue/claim", validateBody(claimSchema), investmentController.claim);
 
 router.get("/applications", accountController.getApplications);
 router.post(
