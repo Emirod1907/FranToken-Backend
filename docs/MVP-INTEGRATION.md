@@ -47,7 +47,7 @@ Cada fixture tiene 1000 tokens enteros a USD 10. El admin técnico recibe mUSDC 
 
 ## Verificación
 
-Backend: `npm run build` y `npm run test:mvp`. Blockchain: `npm test`. Frontend: `pnpm typecheck`, `node scripts/check-architecture.mjs`, `pnpm lint` sobre el alcance y `pnpm build`. Para el runner integrado se requiere **Node 24** por `node:sqlite`; llama los clientes reales de frontend, Express/JWT, Sequelize/SQL y contratos Hardhat en memoria, sin abrir puertos. El mismo test se invoca desde frontend con `node scripts/test-academic-integration.cjs`.
+Backend: `npm run build`, `npm run typecheck:scripts` y `npm run test:mvp`. Blockchain: `npm test`. Frontend: `pnpm typecheck`, `node scripts/check-architecture.mjs`, `pnpm lint` sobre el alcance y `pnpm build`. Para el runner integrado se requiere **Node 24** por `node:sqlite`; llama los clientes reales de frontend, Express/JWT, Sequelize/SQL y contratos Hardhat en memoria, sin abrir puertos. El mismo test se invoca desde frontend con `node scripts/test-academic-integration.cjs`.
 
 Ver evidencia y limitaciones en el documento de pruebas del frontend. Falta la comprobación manual con navegador y extensión real; la prueba en memoria no verifica render visual ni transporte TCP. No se usan fondos reales.
 

@@ -30,6 +30,7 @@ La documentación básica permanece privada en SQL. `kycApproved` representa rev
 
 ```bash
 npm run build
+npm run typecheck:scripts
 npm run test:mvp
 ```
 

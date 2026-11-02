@@ -11,10 +11,11 @@
     "db:seed": "ts-node-dev --transpile-only src/seeders/seed.ts",
     "db:seed:prod": "node dist/seeders/seed.js",
     "typecheck": "tsc --noEmit",
-    "db:migrate:mvp": "ts-node --project tsconfig.json scripts/migrate-mvp.ts",
-    "mvp:import": "ts-node --project tsconfig.json scripts/import-academic.ts",
+    "db:migrate:mvp": "ts-node --project tsconfig.scripts.json scripts/migrate-mvp.ts",
+    "mvp:import": "ts-node --project tsconfig.scripts.json scripts/import-academic.ts",
     "test:mvp": "node test/integrated-mvp.cjs",
-    "mvp:sync-artifact": "node scripts/sync-academic-artifact.cjs"
+    "mvp:sync-artifact": "node scripts/sync-academic-artifact.cjs",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

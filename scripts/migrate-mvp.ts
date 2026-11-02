@@ -1,11 +1,11 @@
-import { DataTypes } from "sequelize";
+import { DataTypes, type ModelAttributeColumnOptions } from "sequelize";
 import { sequelize } from "../src/models";
 
 // Migración aditiva e idempotente; no borra perfiles, compras ni solicitudes previas.
 export async function migrateMvp() {
   await sequelize.sync();
   const qi = sequelize.getQueryInterface();
-  const additions: [string, string, object][] = [
+  const additions: [string, string, ModelAttributeColumnOptions][] = [
     ["profiles", "dni", { type: DataTypes.STRING(12), allowNull: true }],
     ["profiles", "cuil", { type: DataTypes.STRING(11), allowNull: true }],
     ["profiles", "birth_date", { type: DataTypes.DATEONLY, allowNull: true }],
