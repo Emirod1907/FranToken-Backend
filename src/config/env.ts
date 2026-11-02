@@ -57,6 +57,9 @@ export const env = {
     jwtSecret: required("JWT_SECRET", "dev-insecure-secret-change-me"),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
     bcryptRounds: int("BCRYPT_ROUNDS", 10),
+    // Demo sin página de registro: si está activo, el primer login con un correo
+    // inexistente crea la cuenta y autentica. Dejar en false en producción real.
+    autoRegisterOnLogin: bool("AUTH_AUTO_REGISTER", false),
   },
   blockchain: {
     // Habilita el módulo on-chain (lecturas). Sin esto, /api/blockchain responde 503.
