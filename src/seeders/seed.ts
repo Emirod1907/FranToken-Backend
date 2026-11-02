@@ -1,7 +1,8 @@
+import { env } from "../config/env";
+import { academicRuntime, projectContracts } from "../blockchain/academic";
 import { assertDatabaseConnection, sequelize } from "../config/database";
-import { Profile, Project, Purchase, User, syncModels } from "../models";
-import * as distribution from "../services/distribution.service";
-import * as investment from "../services/investment.service";
+import { Profile, Project, User, syncModels } from "../models";
+
 import { hashPassword } from "../utils/password";
 
 // Catálogo del marketplace (espejo de marketplace.constants.ts del frontend).
@@ -26,14 +27,15 @@ const projects = [
     featuredRank: 0,
     status: "publicada" as const,
     tokenSymbol: "MCD",
-    unitPriceMinor: "10000000",
+    unitPriceMinor: "1000",
   },
   {
     id: "burger-king",
     name: "Burger King",
     sector: "Comida rápida" as const,
     format: "Restaurante de servicio rápido",
-    descriptor: "Una unidad de restaurante cuyo territorio todavía no se definió.",
+    descriptor:
+      "Una unidad de restaurante cuyo territorio todavía no se definió.",
     company: "Burger King publica un programa de franquicias para operadores.",
     franchise:
       "La marca describe un proceso de selección y condiciones propias; no hay autorización para este proyecto de muestra.",
@@ -44,7 +46,7 @@ const projects = [
     featuredRank: 1,
     status: "publicada" as const,
     tokenSymbol: "BK",
-    unitPriceMinor: "10000000",
+    unitPriceMinor: "1000",
   },
   {
     id: "havanna",
@@ -61,10 +63,10 @@ const projects = [
     palette: "lavender" as const,
     annualizedRoiScenario: [-2, 3, 6, 5, 8],
     featuredRank: 2,
-    // En operación para demostrar el circuito de distribución.
-    status: "en_operacion" as const,
+    // El inicio de operación se confirma desde administración.
+    status: "publicada" as const,
     tokenSymbol: "HAV",
-    unitPriceMinor: "10000000",
+    unitPriceMinor: "1000",
   },
   {
     id: "pizza-hut",
@@ -83,7 +85,7 @@ const projects = [
     featuredRank: 3,
     status: "publicada" as const,
     tokenSymbol: "PZH",
-    unitPriceMinor: "10000000",
+    unitPriceMinor: "1000",
   },
 ];
 
@@ -92,7 +94,10 @@ const DEMO_PASSWORD = "demodemo8"; // solo para el entorno de demostración
 
 async function seedProjects() {
   for (const project of projects) {
-    await Project.upsert(project);
+    await Project.findOrCreate({
+      where: { id: project.id },
+      defaults: project,
+    });
   }
   console.log(`[seed] ${projects.length} proyectos del marketplace listos.`);
 }
@@ -104,9 +109,9 @@ async function seedDemoUserAndCircuit() {
       email: DEMO_EMAIL,
       displayName: "Inversor demo",
       passwordHash: await hashPassword(DEMO_PASSWORD),
-      // Admin para probar las rutas de administración; KYC habilitado para comprar.
+      // Administrador de demostración; no habilita inversiones sin revisión.
       role: "admin",
-      kycApproved: true,
+      kycApproved: false,
     },
   });
 
@@ -121,28 +126,14 @@ async function seedDemoUserAndCircuit() {
     },
   });
 
-  // Siembra el circuito una sola vez: compra (pago simulado) + distribución.
-  const purchases = await Purchase.count({ where: { userId: user.id } });
-  if (purchases === 0) {
-    await investment.buyTokens(user, { projectId: "havanna", units: 12 });
-    await investment.buyTokens(user, { projectId: "mcdonalds", units: 5 });
-    // Distribución de ejemplo para la franquicia en operación.
-    await distribution.distribute(user.id, {
-      projectId: "havanna",
-      periodId: "2026-10",
-      amount: "120",
-      memo: "Ingreso distribuible octubre (demo)",
-    });
-    console.log("[seed] Circuito demo: compras + distribución listas.");
-  }
-
-  console.log(`[seed] Usuario demo listo: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
+  console.log(`[seed] Administrador demo listo: ${DEMO_EMAIL}`);
 }
 
 /** Siembra idempotente, reutilizable desde el arranque del server (SEED_ON_BOOT). */
 export async function seedAll() {
   await seedProjects();
   await seedDemoUserAndCircuit();
+  if (env.blockchain.enabled) await importAcademicCatalog();
 }
 
 async function runCli() {
@@ -159,4 +150,24 @@ if (require.main === module) {
     console.error("[seed] Error:", err);
     process.exit(1);
   });
+}
+
+export async function importAcademicCatalog() {
+  const { manifest } = await academicRuntime();
+  for (const item of manifest.projects) {
+    const project = await Project.findByPk(item.id);
+    if (!project) continue;
+    await project.update({
+      tokenAddress: item.token,
+      investmentAgreementAddress: item.investment,
+      unitPriceMinor: "1000",
+      currencyDecimals: 2,
+      currency: "USD",
+    });
+    const { token } = await projectContracts(project);
+    await project.update({
+      tokenSymbol: await token.symbol(),
+      totalUnits: (await token.maxSupply()).toString(),
+    });
+  }
 }

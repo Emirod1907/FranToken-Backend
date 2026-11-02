@@ -70,6 +70,10 @@ export const env = {
       : undefined,
     // Clave privada del agente/firmante del servidor (solo para operaciones de escritura).
     agentPrivateKey: process.env.BLOCKCHAIN_AGENT_PRIVATE_KEY ?? "",
+    manifestPath: process.env.BLOCKCHAIN_MANIFEST_PATH ?? "",
+    useLocalAccounts: bool("BLOCKCHAIN_USE_LOCAL_ACCOUNTS", false),
+    adminPrivateKey: process.env.BLOCKCHAIN_ADMIN_PRIVATE_KEY ?? "",
+    verifierPrivateKey: process.env.BLOCKCHAIN_VERIFIER_PRIVATE_KEY ?? "",
     addresses: {
       franchiseToken: process.env.FRANCHISE_TOKEN_ADDRESS ?? "",
       identityRegistry: process.env.IDENTITY_REGISTRY_ADDRESS ?? "",

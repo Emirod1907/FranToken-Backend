@@ -1,6 +1,20 @@
 # Estado técnico frente al modelo de negocio
 
-Actualizado: 2026-11-01. Fuentes: [informe recibido](source/estado-vs-modelo.pdf), [presentación](source/presentacion-final.md), [DTE](LIFECYCLES.md) y lectura estática del código de los tres repositorios. Esta revisión no ejecutó contratos, desplegó servicios ni certificó cumplimiento ERC-3643, seguridad o validez jurídica.
+## Integración MVP vigente — 2026-11-02
+
+Frontend y blockchain conservan `feat/academic-mvp`. Backend usa `feat/mvp-integracion-completa`, creada desde `develop` fd67b09. La instrucción más reciente autoriza implementar/documentar los tres repositorios. [Alcance vigente](MVP-ACADEMICO.md).
+
+- Registro JWT real; perfil común con DNI/CUIL/nacimiento/domicilio. El usuario puede invertir y solicitar una franquicia. Revisión manual demo sin proveedor KYC; datos privados en SQL, sin DNI/CUIL en cadena o catálogo.
+- Desafío de wallet firmado, aprobación manual en registry y SQL, aceptación C4 y compra USD 10 (1000 centavos). Emisión mediante verificador, referencia durable y recuperación de eventos; sin fallback DB-only.
+- Solicitudes sin tres años obligatorios, estado/ID del backend, revisión admin y publicación idempotente mediante AcademicProjectFactory. Se crean token+C4 y se incorpora el proyecto al catálogo dinámico sin ROI inventado.
+- Estado y balances provenientes de contratos. Reparto mensual solo Operating, importe manual mUSDC (6 decimales), período único, oferta del corte desde evento. Cobro firmado por el titular; la consulta HTTP de claim no acredita pagos.
+- Escritores antiguos `/api/mvp` y `/api/blockchain/*` retirados (410). Seed sin compras/repartos y sin reabrir proyectos; migración aditiva documentada. Un proceso Express coordina escrituras locales.
+
+Evidencia: 58 pruebas blockchain y 14 escenarios frontend → Express/JWT → Sequelize/SQL real → Hardhat en memoria. Incluyen publicación nueva con compra/reparto/cobro y migración repetida preservando filas. El runner usa Node 24 y adaptador test-only node:sqlite. No se probaron servidores MySQL/PostgreSQL ni navegador con extensión real. No se modificó tu base ni se movieron fondos reales. Los checks finales y sus límites están en la documentación de pruebas/ejecución de cada repositorio.
+
+## Antecedentes del modelo completo
+
+La revisión siguiente es histórica; sus descripciones de mint directo, coordinator ausente, datos demo y cantidades de tests no describen el recorrido MVP vigente. Se conserva para rastrear los pendientes jurídicos/operativos de una versión real.
 
 ## Evidencia y cronología
 

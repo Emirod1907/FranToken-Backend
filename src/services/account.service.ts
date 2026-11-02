@@ -7,6 +7,8 @@ import { FranchisePerformance } from "../models/franchisePerformance.model";
 import { Profile } from "../models/profile.model";
 import { TokenActivity } from "../models/tokenActivity.model";
 import { TokenHolding } from "../models/tokenHolding.model";
+import { Purchase } from "../models/purchase.model";
+import { profileSchema } from "../validators/account.validator";
 import { User } from "../models/user.model";
 import { WalletChallenge } from "../models/walletChallenge.model";
 import { ApiError } from "../utils/ApiError";
@@ -27,8 +29,22 @@ export async function saveProfile(userId: string, input: ProfileInput) {
     where: { userId },
     defaults: { userId, ...input },
   });
+  const identityFields = [
+    "fullName",
+    "dni",
+    "cuil",
+    "birthDate",
+    "province",
+    "city",
+    "address",
+    "postalCode",
+    "country",
+  ] as const;
+  const changed = identityFields.some((key) => profile.get(key) !== input[key]);
   profile.set(input);
   await profile.save();
+  if (changed)
+    await User.update({ kycApproved: false }, { where: { id: userId } });
   return profile.toContract();
 }
 
@@ -58,6 +74,7 @@ export async function submitFranchise(
   userId: string,
   input: FranchiseApplicationInput,
 ) {
+  await requireCompleteProfile(userId);
   // Crea solicitud + filas de rendimiento y limpia el borrador, de forma atómica.
   const application = await sequelize.transaction(async (tx) => {
     const created = await FranchiseApplication.create(
@@ -78,12 +95,33 @@ export async function submitFranchise(
     );
 
     const rows = [
-      { year: input.year1, revenue: input.revenue1, marginPercent: input.margin1 },
-      { year: input.year2, revenue: input.revenue2, marginPercent: input.margin2 },
-      { year: input.year3, revenue: input.revenue3, marginPercent: input.margin3 },
+      {
+        year: input.year1,
+        revenue: input.revenue1,
+        marginPercent: input.margin1,
+      },
+      {
+        year: input.year2,
+        revenue: input.revenue2,
+        marginPercent: input.margin2,
+      },
+      {
+        year: input.year3,
+        revenue: input.revenue3,
+        marginPercent: input.margin3,
+      },
     ];
     await FranchisePerformance.bulkCreate(
-      rows.map((row) => ({ ...row, applicationId: created.id })),
+      rows
+        .filter(
+          (
+            row,
+          ): row is { year: number; revenue: number; marginPercent: number } =>
+            row.year !== undefined &&
+            row.revenue !== undefined &&
+            row.marginPercent !== undefined,
+        )
+        .map((row) => ({ ...row, applicationId: created.id })),
       { transaction: tx },
     );
 
@@ -144,7 +182,10 @@ function walletMessage(
  * #11 — Paso 1: emite un desafío. El usuario debe firmar el mensaje devuelto con
  * su wallet (personal_sign) para demostrar que la controla.
  */
-export async function requestWalletChallenge(user: User, walletAddress: string) {
+export async function requestWalletChallenge(
+  user: User,
+  walletAddress: string,
+) {
   const address = getAddress(walletAddress);
   const nonce = randomUUID();
   const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
@@ -154,7 +195,10 @@ export async function requestWalletChallenge(user: User, walletAddress: string) 
   });
   challenge.set({ address, nonce, expiresAt });
   await challenge.save();
-  return { message: walletMessage(user.id, address, nonce, expiresAt), expiresAt };
+  return {
+    message: walletMessage(user.id, address, nonce, expiresAt),
+    expiresAt,
+  };
 }
 
 /**
@@ -167,7 +211,9 @@ export async function linkWallet(
   signature: string,
 ) {
   const address = getAddress(walletAddress);
-  const challenge = await WalletChallenge.findOne({ where: { userId: user.id } });
+  const challenge = await WalletChallenge.findOne({
+    where: { userId: user.id },
+  });
   if (!challenge || challenge.address !== address) {
     throw ApiError.badRequest(
       "No hay un desafío vigente para esa wallet. Pedí uno nuevo primero.",
@@ -177,7 +223,12 @@ export async function linkWallet(
     throw ApiError.badRequest("El desafío venció. Pedí uno nuevo.");
   }
 
-  const message = walletMessage(user.id, address, challenge.nonce, challenge.expiresAt);
+  const message = walletMessage(
+    user.id,
+    address,
+    challenge.nonce,
+    challenge.expiresAt,
+  );
   let recovered: string;
   try {
     recovered = getAddress(verifyMessage(message, signature));
@@ -193,6 +244,16 @@ export async function linkWallet(
     throw ApiError.conflict("Esa wallet ya está vinculada a otra cuenta.");
   }
 
+  if (user.walletAddress && user.walletAddress !== address) {
+    const count = await Purchase.count({
+      where: { userId: user.id, status: ["pending", "confirmed"] },
+    });
+    if (count > 0)
+      throw ApiError.conflict(
+        "No se puede cambiar la wallet con compras pendientes o confirmadas en este MVP.",
+      );
+  }
+  if (user.walletAddress !== address) user.kycApproved = false;
   user.walletAddress = address;
   await user.save();
   await challenge.destroy();
@@ -201,4 +262,13 @@ export async function linkWallet(
 
 export function getWallet(user: User) {
   return { walletAddress: user.walletAddress ?? null };
+}
+
+export async function requireCompleteProfile(userId: string) {
+  const profile = await Profile.findOne({ where: { userId } });
+  if (!profile || !profileSchema.safeParse(profile.toContract()).success)
+    throw ApiError.conflict(
+      "Completá DNI, CUIL, nacimiento y domicilio en tu perfil antes de continuar.",
+    );
+  return profile;
 }

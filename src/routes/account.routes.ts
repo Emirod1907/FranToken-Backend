@@ -20,13 +20,22 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/profile", accountController.getProfile);
-router.put("/profile", validateBody(profileSchema), accountController.saveProfile);
+router.put(
+  "/profile",
+  validateBody(profileSchema),
+  accountController.saveProfile,
+);
 
 // Tenencias y circuito de inversión (compra -> tenencias -> cobro).
+router.get("/investment", investmentController.snapshot);
 router.get("/holdings", investmentController.getHoldings);
 router.get("/purchases", investmentController.listPurchases);
 router.post("/purchases", validateBody(buySchema), investmentController.buy);
-router.post("/revenue/claim", validateBody(claimSchema), investmentController.claim);
+router.post(
+  "/revenue/claim",
+  validateBody(claimSchema),
+  investmentController.claim,
+);
 
 router.get("/applications", accountController.getApplications);
 router.post(
@@ -46,6 +55,10 @@ router.post(
   validateBody(walletChallengeSchema),
   accountController.requestWalletChallenge,
 );
-router.put("/wallet", validateBody(walletLinkSchema), accountController.linkWallet);
+router.put(
+  "/wallet",
+  validateBody(walletLinkSchema),
+  accountController.linkWallet,
+);
 
 export default router;

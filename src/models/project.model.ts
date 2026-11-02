@@ -18,7 +18,7 @@ export class Project extends Model<
 > {
   declare id: string; // slug estable usado en /marketplace/[slug]
   declare name: string;
-  declare sector: "Comida rápida" | "Cafetería" | "Restaurantes";
+  declare sector: string;
   declare format: string;
   declare descriptor: string;
   declare company: string;
@@ -104,7 +104,7 @@ Project.init(
     },
     name: { type: DataTypes.STRING(120), allowNull: false },
     sector: {
-      type: DataTypes.ENUM("Comida rápida", "Cafetería", "Restaurantes"),
+      type: DataTypes.STRING(80),
       allowNull: false,
     },
     format: { type: DataTypes.STRING(120), allowNull: false },
@@ -135,7 +135,7 @@ Project.init(
     unitPriceMinor: {
       type: DataTypes.STRING(40),
       allowNull: false,
-      defaultValue: "10000000", // USD 10 con 6 decimales
+      defaultValue: "1000", // USD 10 en centavos
     },
     currency: {
       type: DataTypes.STRING(3),
@@ -145,7 +145,7 @@ Project.init(
     currencyDecimals: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 6,
+      defaultValue: 2,
     },
     tokenSymbol: { type: DataTypes.STRING(40), allowNull: true },
     tokenAddress: { type: DataTypes.STRING(42), allowNull: true },

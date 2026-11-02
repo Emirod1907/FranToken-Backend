@@ -7,6 +7,8 @@ import {
   distributeSchema,
   kycSchema,
   projectPatchSchema,
+  reviewSchema,
+  publishSchema,
 } from "../validators/investment.validator";
 
 const router = Router();
@@ -14,10 +16,27 @@ const router = Router();
 // Todo el namespace /admin exige rol admin.
 router.use(requireAuth, requireAdmin);
 
-// Habilitación manual de KYC (demostración).
-router.post("/users/:id/kyc", validateBody(kycSchema), adminController.setUserKyc);
+router.get("/users", adminController.users);
+router.get("/applications", adminController.applications);
+router.patch(
+  "/applications/:id/review",
+  validateBody(reviewSchema),
+  adminController.review,
+);
+router.post(
+  "/applications/:id/publish",
+  validateBody(publishSchema),
+  adminController.publish,
+);
 
-// Gestión de la franquicia: estado, precio y cableado al token on-chain.
+// Habilitación manual de KYC (demostración).
+router.post(
+  "/users/:id/kyc",
+  validateBody(kycSchema),
+  adminController.setUserKyc,
+);
+
+// Transiciones de estado confirmadas por el contrato académico.
 router.patch(
   "/projects/:slug",
   validateBody(projectPatchSchema),
@@ -26,6 +45,10 @@ router.patch(
 router.get("/projects/:slug/distributions", adminController.listDistributions);
 
 // Distribución de ingresos de un período (solo si la franquicia está en operación).
-router.post("/distributions", validateBody(distributeSchema), adminController.distribute);
+router.post(
+  "/distributions",
+  validateBody(distributeSchema),
+  adminController.distribute,
+);
 
 export default router;

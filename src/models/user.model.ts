@@ -78,5 +78,8 @@ export function toSession(user: User) {
     userId: user.id,
     email: user.email,
     displayName: user.displayName,
+    role: user.role,
+    walletAddress: user.walletAddress,
+    kycApproved: user.kycApproved,
   };
 }
