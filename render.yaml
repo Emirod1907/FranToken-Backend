@@ -26,6 +26,10 @@ services:
         value: "true"
       - key: JWT_SECRET
         generateValue: true
+      # Demo: el primer login con un correo nuevo crea la cuenta y autentica
+      # (no hay página de registro en el frontend). Apagar en producción real.
+      - key: AUTH_AUTO_REGISTER
+        value: "true"
       - key: CORS_ORIGIN
         value: https://frantoken-frontend-git-main-mrtfogs-projects.vercel.app
       - key: BLOCKCHAIN_ENABLED
