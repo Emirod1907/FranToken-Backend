@@ -1,6 +1,8 @@
 import { sequelize } from "../config/database";
 import { ApplicationDraft } from "./applicationDraft.model";
 import { Distribution } from "./distribution.model";
+import { DistributionRequest } from "./distributionRequest.model";
+import { FranchiseAuditEvent } from "./franchiseAuditEvent.model";
 import { FranchiseApplication } from "./franchiseApplication.model";
 import { FranchisePerformance } from "./franchisePerformance.model";
 import { Profile } from "./profile.model";
@@ -14,7 +16,11 @@ import { WalletChallenge } from "./walletChallenge.model";
 
 // ─── Asociaciones ────────────────────────────────────────────
 
-User.hasOne(Profile, { foreignKey: "userId", as: "profile", onDelete: "CASCADE" });
+User.hasOne(Profile, {
+  foreignKey: "userId",
+  as: "profile",
+  onDelete: "CASCADE",
+});
 Profile.belongsTo(User, { foreignKey: "userId", as: "user" });
 
 User.hasOne(ApplicationDraft, {
@@ -53,7 +59,10 @@ TokenHolding.hasMany(TokenActivity, {
   as: "activities",
   onDelete: "CASCADE",
 });
-TokenActivity.belongsTo(TokenHolding, { foreignKey: "holdingId", as: "holding" });
+TokenActivity.belongsTo(TokenHolding, {
+  foreignKey: "holdingId",
+  as: "holding",
+});
 
 User.hasOne(WalletChallenge, {
   foreignKey: "userId",
@@ -90,6 +99,8 @@ export {
   Purchase,
   WalletChallenge,
   Distribution,
+  DistributionRequest,
+  FranchiseAuditEvent,
   RevenueAllocation,
 };
 

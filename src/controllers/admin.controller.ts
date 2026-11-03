@@ -1,11 +1,14 @@
 import type { Request, Response } from "express";
 import * as adminService from "../services/admin.service";
 import * as distribution from "../services/distribution.service";
+import { distributeAsSuperadmin } from "../services/distributionRequest.service";
 import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const setUserKyc = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
   const result = await adminService.setUserKyc(
+    req.user,
     req.params.id,
     req.body.approved,
   );
@@ -14,14 +17,15 @@ export const setUserKyc = asyncHandler(async (req: Request, res: Response) => {
 
 export const updateProject = asyncHandler(
   async (req: Request, res: Response) => {
-    const project = await adminService.updateProject(req.params.slug, req.body);
+    if (!req.user) throw ApiError.unauthorized();
+    const project = await adminService.updateProject(req.user, req.params.slug, req.body);
     res.json(project);
   },
 );
 
 export const distribute = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
-  const result = await distribution.distribute(req.user.id, req.body);
+  const result = await distributeAsSuperadmin(req.user, req.body);
   res.status(result.idempotent ? 200 : 201).json(result);
 });
 
@@ -41,17 +45,22 @@ export const applications = asyncHandler(
   },
 );
 export const review = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
   res.json({
     application: await adminService.reviewApplication(
+      req.user,
       req.params.id,
       req.body.status,
       req.body.note,
+      req.body.version,
     ),
   });
 });
 export const publish = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw ApiError.unauthorized();
   res.json({
     project: await adminService.publishApplication(
+      req.user,
       req.params.id,
       req.body.symbol,
       req.body.totalUnits,

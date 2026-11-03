@@ -12,6 +12,7 @@ import { profileSchema } from "../validators/account.validator";
 import { User, toSession } from "../models/user.model";
 import { WalletChallenge } from "../models/walletChallenge.model";
 import { ApiError } from "../utils/ApiError";
+import { auditFranchise } from "./franchiseAudit.service";
 import type {
   FranchiseApplicationInput,
   ProfileInput,
@@ -136,6 +137,9 @@ export async function submitFranchise(
     );
 
     await ApplicationDraft.destroy({ where: { userId }, transaction: tx });
+    const actor = await User.findByPk(userId, { transaction: tx });
+    if (!actor) throw ApiError.unauthorized();
+    await auditFranchise(actor, "application.created", { applicationId: created.id }, { status: "Enviada" }, tx);
 
     // Recarga con sus filas para serializar el contrato completo.
     const full = await FranchiseApplication.findByPk(created.id, {

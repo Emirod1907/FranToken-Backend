@@ -46,3 +46,13 @@ La publicación necesita token+C4 para que una solicitud aprobada pueda comprars
 La migración es aditiva; el seed no genera compras/repartos. Los endpoints alternativos de escritura quedan 410. Reintentos se concilian con eventos y claves únicas; no hay fallback que confirme derechos solo en base de datos. La cola del MVP presupone un proceso escritor. Reiniciar Hardhat exige una base de prueba nueva para una nueva presentación, sin borrado automático.
 
 Evidencia: 58 tests de contratos y 14 escenarios integrados con SQL y EVM reales en memoria. Límites: sin prueba visual/TCP ni ejecución contra servidor MySQL/PostgreSQL; no se prueba uso con valor real. [Flujo vigente](MVP-ACADEMICO.md).
+
+## MVP-2026-11-03 — Gestión del creador y acceso interno de superadmin
+
+Estado: implementado por autorización del usuario de proceder con el plan, partiendo de `develop` en ramas `feat/franchise-management`. El creador administra su propia solicitud y franquicia; el superadmin tiene acceso global. Observar, aprobar y publicar emisiones, habilitar perfiles y ejecutar repartos exige superadmin. El rol `admin` anterior se conserva sin permisos internos y no se promueve automáticamente.
+
+La corrección previa a publicar vuelve la solicitud a `Enviada` e invalida aprobaciones. Versiones y bloqueos SQL rechazan revisiones obsoletas. La reserva de publicación congela los datos, aun si falla la cadena. El creador inicia operación/cierra su franquicia y propone importes mensuales; el superadmin observa o ejecuta exclusivamente el contenido almacenado. Un reintento concilia la ejecución sin duplicarla. El cierre es definitivo y conserva ingresos ya asignados.
+
+El alta interna es un comando explícito con correo y contraseña configurados fuera del código; no modifica cuentas ocupadas ni restablece contraseñas. Se incorpora auditoría privada y migración aditiva. No cambian contratos Solidity, precio, C3/C4, derechos económicos ni la exclusión de reventa. La autorización web se valida en Express con el usuario vigente de SQL, separada de los firmantes técnicos blockchain.
+
+Evidencia: 31 escenarios integrados (clientes frontend, Express/JWT, SQLite y Hardhat), builds/tipos y navegador escritorio/móvil. Migración local en MariaDB con recuentos preservados y acceso real por HTTP. PostgreSQL y extensión real de wallet siguen sin probarse en esta entrega. Ver el alcance vigente en [MVP académico](MVP-ACADEMICO.md).

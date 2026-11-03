@@ -15,9 +15,8 @@ export class User extends Model<
   declare email: string;
   declare passwordHash: string;
   declare displayName: string;
-  // Rol de aplicación. 'admin' habilita las operaciones de agente on-chain
-  // (si además están habilitadas por configuración del servidor).
-  declare role: CreationOptional<"investor" | "admin">;
+  // 'admin' se conserva como dato legado, sin privilegios globales.
+  declare role: CreationOptional<"investor" | "admin" | "superadmin">;
   // Wallet EVM vinculada (checksum). Permite consultar tenencias on-chain.
   declare walletAddress: CreationOptional<string | null>;
   // KYC manual de demostración: un admin lo habilita; se exige para comprar.
@@ -48,7 +47,7 @@ User.init(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM("investor", "admin"),
+      type: DataTypes.ENUM("investor", "admin", "superadmin"),
       allowNull: false,
       defaultValue: "investor",
     },

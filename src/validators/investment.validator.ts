@@ -24,7 +24,11 @@ export const distributeSchema = z.object({
   periodId: z
     .string()
     .trim()
-    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Período AAAA-MM."),
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Período AAAA-MM.")
+    .refine(
+      (value) => value >= "2000-01",
+      "El período debe ser enero de 2000 o posterior.",
+    ),
   amount: decimalAmount,
   memo: z.string().trim().max(160).optional(),
 });
@@ -34,9 +38,10 @@ export const kycSchema = z.object({
 });
 
 export const projectPatchSchema = z
-  .object({ status: z.enum(["publicada", "en_operacion", "cerrada"]) })
+  .object({ status: z.enum(["en_operacion", "cerrada"]) })
   .strict();
 export const reviewSchema = z.object({
+  version: z.number().int().positive(),
   status: z.enum(["Aprobada", "Observada"]),
   note: z.string().trim().max(500).default(""),
 });

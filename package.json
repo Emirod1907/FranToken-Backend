@@ -16,6 +16,8 @@
     "db:seed:prod": "node dist/seeders/seed.js",
     "typecheck": "tsc --noEmit",
     "db:migrate:mvp": "ts-node --project tsconfig.scripts.json scripts/migrate-mvp.ts",
+    "db:migrate:franchises": "ts-node --project tsconfig.scripts.json scripts/migrate-franchise-management.ts",
+    "superadmin:create": "ts-node --project tsconfig.scripts.json scripts/create-superadmin.ts",
     "mvp:import": "ts-node --project tsconfig.scripts.json scripts/import-academic.ts",
     "test:mvp": "node test/integrated-mvp.cjs",
     "mvp:sync-artifact": "node scripts/sync-academic-artifact.cjs",

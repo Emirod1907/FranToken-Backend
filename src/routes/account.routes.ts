@@ -1,5 +1,7 @@
 import { Router } from "express";
 import * as accountController from "../controllers/account.controller";
+import * as franchiseController from "../controllers/franchise.controller";
+import { editApplicationSchema } from "../validators/franchise.validator";
 import * as investmentController from "../controllers/investment.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
@@ -38,6 +40,8 @@ router.post(
 );
 
 router.get("/applications", accountController.getApplications);
+router.get("/applications/:id", franchiseController.application);
+router.patch("/applications/:id", validateBody(editApplicationSchema), franchiseController.editApplication);
 router.post(
   "/applications",
   validateBody(franchiseApplicationSchema),

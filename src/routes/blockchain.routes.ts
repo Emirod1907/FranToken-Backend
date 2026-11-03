@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as controller from "../controllers/blockchain.controller";
-import { requireAdmin } from "../middleware/admin.middleware";
+import { requireSuperadmin } from "../middleware/admin.middleware";
 import { requireAuth } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
 import {
@@ -42,35 +42,35 @@ router.get("/me", requireAuth, controller.myHolding);
 router.post(
   "/kyc",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(kycSchema),
   controller.kyc,
 );
 router.post(
   "/mint",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(mintSchema),
   controller.mint,
 );
 router.post(
   "/freeze",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(freezeSchema),
   controller.freeze,
 );
 router.post(
   "/pause",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(pauseSchema),
   controller.pause,
 );
 router.post(
   "/distribute",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(distributeSchema),
   controller.distribute,
 );
@@ -79,7 +79,7 @@ router.post(
 router.post(
   "/subscriptions/issue",
   requireAuth,
-  requireAdmin,
+  requireSuperadmin,
   validateBody(subscriptionSchema),
   controller.issueSubscription,
 );

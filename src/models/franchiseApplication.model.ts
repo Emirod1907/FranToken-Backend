@@ -11,8 +11,7 @@ import { sequelize } from "../config/database";
 import { FranchisePerformance } from "./franchisePerformance.model";
 import { User } from "./user.model";
 
-// Estado único soportado hoy. El circuito de revisión real está pendiente
-// (ver docs del frontend: "Borrador demo enviado" no es una entrega formal).
+// La solicitud puede revisarse y reenviarse hasta reservar su publicación.
 export const APPLICATION_STATUS = "Enviada" as const;
 
 /** Solicitud para abrir una franquicia (FranchiseApplication). 1:N por usuario. */
@@ -25,6 +24,7 @@ export class FranchiseApplication extends Model<
   declare status: CreationOptional<string>;
   declare reviewNote: CreationOptional<string | null>;
   declare projectId: CreationOptional<string | null>;
+  declare version: CreationOptional<number>;
   declare franchiseName: string;
   declare sector: string;
   declare city: string;
@@ -56,6 +56,7 @@ export class FranchiseApplication extends Model<
       status: this.status,
       reviewNote: this.reviewNote,
       projectId: this.projectId,
+      version: this.version,
       franchiseName: this.franchiseName,
       sector: this.sector,
       city: this.city,
@@ -84,6 +85,7 @@ FranchiseApplication.init(
     },
     reviewNote: { type: DataTypes.STRING(500), allowNull: true },
     projectId: { type: DataTypes.STRING(80), allowNull: true },
+    version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     status: {
       type: DataTypes.STRING(60),
       allowNull: false,

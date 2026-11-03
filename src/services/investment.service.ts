@@ -155,7 +155,7 @@ export async function investmentSnapshot(user: User) {
     deploymentId: manifest.deploymentId,
     chainId: 31337,
     admin: manifest.admin,
-    isAdmin: user.role === "admin",
+    isAdmin: user.role === "superadmin",
     wallet: user.walletAddress,
     verified: Boolean(
       user.kycApproved &&
