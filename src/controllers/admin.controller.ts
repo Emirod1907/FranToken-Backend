@@ -5,14 +5,19 @@ import { ApiError } from "../utils/ApiError";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const setUserKyc = asyncHandler(async (req: Request, res: Response) => {
-  const result = await adminService.setUserKyc(req.params.id, req.body.approved);
+  const result = await adminService.setUserKyc(
+    req.params.id,
+    req.body.approved,
+  );
   res.json(result);
 });
 
-export const updateProject = asyncHandler(async (req: Request, res: Response) => {
-  const project = await adminService.updateProject(req.params.slug, req.body);
-  res.json({ project });
-});
+export const updateProject = asyncHandler(
+  async (req: Request, res: Response) => {
+    const project = await adminService.updateProject(req.params.slug, req.body);
+    res.json(project);
+  },
+);
 
 export const distribute = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw ApiError.unauthorized();
@@ -20,7 +25,36 @@ export const distribute = asyncHandler(async (req: Request, res: Response) => {
   res.status(result.idempotent ? 200 : 201).json(result);
 });
 
-export const listDistributions = asyncHandler(async (req: Request, res: Response) => {
-  const distributions = await distribution.listDistributions(req.params.slug);
-  res.json({ distributions });
+export const listDistributions = asyncHandler(
+  async (req: Request, res: Response) => {
+    const distributions = await distribution.listDistributions(req.params.slug);
+    res.json({ distributions });
+  },
+);
+
+export const users = asyncHandler(async (_req: Request, res: Response) => {
+  res.json({ users: await adminService.listUsers() });
+});
+export const applications = asyncHandler(
+  async (_req: Request, res: Response) => {
+    res.json({ applications: await adminService.listApplications() });
+  },
+);
+export const review = asyncHandler(async (req: Request, res: Response) => {
+  res.json({
+    application: await adminService.reviewApplication(
+      req.params.id,
+      req.body.status,
+      req.body.note,
+    ),
+  });
+});
+export const publish = asyncHandler(async (req: Request, res: Response) => {
+  res.json({
+    project: await adminService.publishApplication(
+      req.params.id,
+      req.body.symbol,
+      req.body.totalUnits,
+    ),
+  });
 });

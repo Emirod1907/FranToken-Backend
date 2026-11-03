@@ -13,7 +13,7 @@ import { User } from "./user.model";
 
 // Estado único soportado hoy. El circuito de revisión real está pendiente
 // (ver docs del frontend: "Borrador demo enviado" no es una entrega formal).
-export const APPLICATION_STATUS = "Borrador demo enviado" as const;
+export const APPLICATION_STATUS = "Enviada" as const;
 
 /** Solicitud para abrir una franquicia (FranchiseApplication). 1:N por usuario. */
 export class FranchiseApplication extends Model<
@@ -23,6 +23,8 @@ export class FranchiseApplication extends Model<
   declare id: CreationOptional<string>;
   declare userId: ForeignKey<User["id"]>;
   declare status: CreationOptional<string>;
+  declare reviewNote: CreationOptional<string | null>;
+  declare projectId: CreationOptional<string | null>;
   declare franchiseName: string;
   declare sector: string;
   declare city: string;
@@ -52,6 +54,8 @@ export class FranchiseApplication extends Model<
       id: this.id,
       createdAt: this.createdAt.toISOString(),
       status: this.status,
+      reviewNote: this.reviewNote,
+      projectId: this.projectId,
       franchiseName: this.franchiseName,
       sector: this.sector,
       city: this.city,
@@ -78,6 +82,8 @@ FranchiseApplication.init(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    reviewNote: { type: DataTypes.STRING(500), allowNull: true },
+    projectId: { type: DataTypes.STRING(80), allowNull: true },
     status: {
       type: DataTypes.STRING(60),
       allowNull: false,

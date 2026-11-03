@@ -10,13 +10,15 @@ function user(req: Request) {
 
 export const buy = asyncHandler(async (req: Request, res: Response) => {
   const purchase = await investment.buyTokens(user(req), req.body);
-  res.status(201).json({ purchase });
+  res.status(purchase.recovered ? 200 : 201).json(purchase);
 });
 
-export const listPurchases = asyncHandler(async (req: Request, res: Response) => {
-  const purchases = await investment.listPurchases(user(req).id);
-  res.json({ purchases });
-});
+export const listPurchases = asyncHandler(
+  async (req: Request, res: Response) => {
+    const purchases = await investment.listPurchases(user(req).id);
+    res.json({ purchases });
+  },
+);
 
 export const getHoldings = asyncHandler(async (req: Request, res: Response) => {
   const holdings = await investment.getHoldings(user(req).id);
@@ -24,6 +26,13 @@ export const getHoldings = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const claim = asyncHandler(async (req: Request, res: Response) => {
-  const result = await investment.claimRevenue(user(req).id, req.body.projectId);
+  const result = await investment.claimRevenue(
+    user(req).id,
+    req.body.projectId,
+  );
   res.json(result);
+});
+
+export const snapshot = asyncHandler(async (req: Request, res: Response) => {
+  res.json(await investment.investmentSnapshot(user(req)));
 });

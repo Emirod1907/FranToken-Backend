@@ -13,6 +13,21 @@ import {
 } from "../validators/blockchain.validator";
 
 const router = Router();
+// Las escrituras del MVP pasan por compras/administración con intención persistida.
+router.use((req, res, next) => {
+  if (req.method !== "GET") {
+    res
+      .status(410)
+      .json({
+        error: {
+          message:
+            "Usá los endpoints de cuenta y administración del MVP integrado.",
+        },
+      });
+    return;
+  }
+  next();
+});
 
 // ─── Lecturas públicas ──────────────────────────────────────
 router.get("/status", controller.status);
@@ -24,10 +39,34 @@ router.get("/holders/:address", controller.holder);
 router.get("/me", requireAuth, controller.myHolding);
 
 // ─── Operaciones de agente (admin + firmante del servidor) ──
-router.post("/kyc", requireAuth, requireAdmin, validateBody(kycSchema), controller.kyc);
-router.post("/mint", requireAuth, requireAdmin, validateBody(mintSchema), controller.mint);
-router.post("/freeze", requireAuth, requireAdmin, validateBody(freezeSchema), controller.freeze);
-router.post("/pause", requireAuth, requireAdmin, validateBody(pauseSchema), controller.pause);
+router.post(
+  "/kyc",
+  requireAuth,
+  requireAdmin,
+  validateBody(kycSchema),
+  controller.kyc,
+);
+router.post(
+  "/mint",
+  requireAuth,
+  requireAdmin,
+  validateBody(mintSchema),
+  controller.mint,
+);
+router.post(
+  "/freeze",
+  requireAuth,
+  requireAdmin,
+  validateBody(freezeSchema),
+  controller.freeze,
+);
+router.post(
+  "/pause",
+  requireAuth,
+  requireAdmin,
+  validateBody(pauseSchema),
+  controller.pause,
+);
 router.post(
   "/distribute",
   requireAuth,

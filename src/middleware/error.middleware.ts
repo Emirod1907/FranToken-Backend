@@ -1,10 +1,19 @@
+import { isError } from "ethers";
 import type { NextFunction, Request, Response } from "express";
-import { ValidationError as SequelizeValidationError, UniqueConstraintError } from "sequelize";
-import { env } from "../config/env";
+import {
+  ValidationError as SequelizeValidationError,
+  UniqueConstraintError,
+} from "sequelize";
 import { ApiError } from "../utils/ApiError";
 
-export function notFoundHandler(req: Request, _res: Response, next: NextFunction) {
-  next(ApiError.notFound(`Ruta no encontrada: ${req.method} ${req.originalUrl}`));
+export function notFoundHandler(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  next(
+    ApiError.notFound(`Ruta no encontrada: ${req.method} ${req.originalUrl}`),
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -30,19 +39,24 @@ export function errorHandler(
     statusCode = 400;
     message = "Datos inválidos.";
     details = err.errors.map((e) => ({ path: e.path, message: e.message }));
-  } else if (err instanceof Error) {
-    message = err.message;
+  } else if (isError(err, "CALL_EXCEPTION")) {
+    statusCode = 409;
+    message =
+      "El contrato rechazó la operación. Revisá estado, términos, habilitación, saldo y período.";
+  } else if (isError(err, "NETWORK_ERROR") || isError(err, "SERVER_ERROR")) {
+    statusCode = 503;
+    message =
+      "La blockchain no está disponible; conservá la referencia y reintentá.";
   }
 
   if (statusCode >= 500) {
-    console.error("[error]", err);
+    console.error("[error]", err instanceof Error ? err.name : "Error");
   }
 
   res.status(statusCode).json({
     error: {
       message,
       ...(details ? { details } : {}),
-      ...(env.isProduction ? {} : { stack: err instanceof Error ? err.stack : undefined }),
     },
   });
 }

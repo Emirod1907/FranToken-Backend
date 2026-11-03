@@ -37,6 +37,7 @@ export class Distribution extends Model<
       periodId: this.periodId,
       amountMinor: this.amountMinor,
       currency: this.currency,
+      currencyDecimals: 6,
       memo: this.memo,
       totalUnits: this.totalUnits,
       mode: this.mode,
@@ -57,7 +58,7 @@ Distribution.init(
     projectId: { type: DataTypes.STRING(80), allowNull: false },
     periodId: { type: DataTypes.STRING(20), allowNull: false },
     amountMinor: { type: DataTypes.STRING(40), allowNull: false },
-    currency: { type: DataTypes.STRING(3), allowNull: false },
+    currency: { type: DataTypes.STRING(12), allowNull: false },
     memo: { type: DataTypes.STRING(160), allowNull: true },
     totalUnits: { type: DataTypes.STRING(40), allowNull: false },
     mode: {
