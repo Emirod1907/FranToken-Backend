@@ -4,6 +4,7 @@ import {
   Contract,
   ContractFactory,
   EventLog,
+  FetchRequest,
   JsonRpcProvider,
   Wallet,
   getAddress,
@@ -68,33 +69,72 @@ export function chainWrite<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 export async function academicRuntime(write = false) {
-  if (!env.blockchain.enabled || (write && !env.blockchain.allowWrites))
+  if (!env.blockchain.enabled)
     throw new ApiError(
       503,
-      "Blockchain no disponible. No se confirmó ninguna emisión simulada en BD.",
+      "La red de tokens no está habilitada en el servidor. Tu perfil y tus solicitudes siguen disponibles.",
+      { code: "BLOCKCHAIN_DISABLED" },
     );
-  const manifest = manifestSchema.parse(
-    JSON.parse(
-      await readFile(
-        env.blockchain.manifestPath ||
-          path.resolve(
-            process.cwd(),
-            "../FranToken_Blockchain/deployments/academic-local.json",
-          ),
-        "utf8",
+  if (write && !env.blockchain.allowWrites)
+    throw new ApiError(
+      503,
+      "Las operaciones de tokens están deshabilitadas temporalmente. Podés consultar tus tenencias.",
+      { code: "BLOCKCHAIN_WRITES_DISABLED" },
+    );
+  let manifest: z.infer<typeof manifestSchema>;
+  try {
+    manifest = manifestSchema.parse(
+      JSON.parse(
+        await readFile(
+          env.blockchain.manifestPath ||
+            path.resolve(
+              process.cwd(),
+              "../FranToken_Blockchain/deployments/academic-local.json",
+            ),
+          "utf8",
+        ),
       ),
-    ),
-  );
-  const rpc = env.blockchain.rpcUrl;
-  if (!rpc) throw new ApiError(503, "Falta BLOCKCHAIN_RPC_URL.");
-  provider ??= new JsonRpcProvider(rpc, undefined, { cacheTimeout: -1 });
-  if ((await provider.getNetwork()).chainId !== 31337n)
-    throw new ApiError(503, "El MVP requiere Hardhat local (31337).");
-  if ((await provider.getCode(manifest.registry)) === "0x")
+    );
+  } catch {
     throw new ApiError(
       503,
-      "Manifiesto sin despliegue vigente. Redesplegá la demo.",
+      "El despliegue de la red de tokens todavía no está disponible. Volvé a intentar más tarde.",
+      { code: "BLOCKCHAIN_MANIFEST_UNAVAILABLE" },
     );
+  }
+  const rpc = env.blockchain.rpcUrl;
+  if (!rpc)
+    throw new ApiError(
+      503,
+      "La conexión con la red de tokens todavía no está configurada.",
+      { code: "BLOCKCHAIN_RPC_NOT_CONFIGURED" },
+    );
+  if (!provider) {
+    const request = new FetchRequest(rpc);
+    request.timeout = 4000;
+    provider = new JsonRpcProvider(request, undefined, { cacheTimeout: -1 });
+  }
+  try {
+    if ((await provider.getNetwork()).chainId !== 31337n)
+      throw new ApiError(
+        503,
+        "La red del servidor no coincide con Hardhat local (31337).",
+        { code: "BLOCKCHAIN_WRONG_NETWORK" },
+      );
+    if ((await provider.getCode(manifest.registry)) === "0x")
+      throw new ApiError(
+        503,
+        "El despliegue de tokens no está vigente en la red actual. Se necesita restablecer el entorno local.",
+        { code: "BLOCKCHAIN_DEPLOYMENT_MISSING" },
+      );
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(
+      503,
+      "La red local de tokens no está respondiendo. Reintentá cuando el servicio esté disponible.",
+      { code: "BLOCKCHAIN_RPC_UNAVAILABLE" },
+    );
+  }
   return { manifest, provider };
 }
 export async function academicSigner(kind: "admin" | "verifier") {

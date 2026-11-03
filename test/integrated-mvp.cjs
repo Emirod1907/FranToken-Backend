@@ -272,6 +272,192 @@ async function main() {
     },
   );
   await check(
+    "wallet cambia o agrega Hardhat, respeta rechazos y verifica la red seleccionada",
+    async () => {
+      const { ensureAcademicNetwork } = require(
+        path.join(
+          front,
+          "src/features/investment/repositories/academicNetwork.repository",
+        ),
+      );
+      for (const initial of ["0x7a69", "0x1"]) {
+        let chain = initial;
+        const calls = [];
+        await ensureAcademicNetwork({
+          async request({ method, params }) {
+            calls.push(method);
+            if (method === "eth_chainId") return chain;
+            assert.equal(method, "wallet_switchEthereumChain");
+            assert.equal(params[0].chainId, "0x7a69");
+            chain = "0x7a69";
+            return null;
+          },
+        });
+        assert.equal(chain, "0x7a69");
+        assert.equal(
+          calls.includes("wallet_switchEthereumChain"),
+          initial !== "0x7a69",
+        );
+      }
+      let chain = "0x1",
+        added = false;
+      const calls = [];
+      await ensureAcademicNetwork({
+        async request({ method, params }) {
+          calls.push(method);
+          if (method === "eth_chainId") return chain;
+          if (method === "wallet_switchEthereumChain") {
+            if (!added) throw { code: 4902 };
+            chain = "0x7a69";
+          } else {
+            assert.equal(method, "wallet_addEthereumChain");
+            assert.equal(params[0].chainId, "0x7a69");
+            assert.equal(params[0].nativeCurrency.decimals, 18);
+            assert.ok(params[0].rpcUrls[0]);
+            added = true;
+          }
+          return null;
+        },
+      });
+      assert.deepEqual(calls, [
+        "eth_chainId",
+        "wallet_switchEthereumChain",
+        "wallet_addEthereumChain",
+        "wallet_switchEthereumChain",
+        "eth_chainId",
+      ]);
+      for (const [code, message] of [
+        [4001, /Cancelaste/],
+        [-32002, /pendiente/],
+        [4200, /No se pudo seleccionar/],
+      ]) {
+        await assert.rejects(
+          ensureAcademicNetwork({
+            async request({ method }) {
+              if (method === "eth_chainId") return "0x1";
+              assert.equal(method, "wallet_switchEthereumChain");
+              throw { code };
+            },
+          }),
+          message,
+        );
+      }
+      await assert.rejects(
+        ensureAcademicNetwork({
+          async request({ method }) {
+            return method === "eth_chainId" ? "0x1" : null;
+          },
+        }),
+        /sigue en otra red/,
+      );
+    },
+  );
+  await check(
+    "red deshabilitada mantiene solicitudes y no presenta saldos inventados",
+    async () => {
+      const enabled = env.blockchain.enabled;
+      const { getAccountOverview } = require(
+        path.join(
+          front,
+          "src/features/account/services/getAccountOverview.service",
+        ),
+      );
+      const before = await models.Purchase.count();
+      env.blockchain.enabled = false;
+      try {
+        const response = await dispatch(
+          "GET",
+          "/api/account/investment",
+          undefined,
+          userToken,
+        );
+        assert.equal(response.status, 503);
+        assert.equal(response.data.error.details.code, "BLOCKCHAIN_DISABLED");
+        assert.equal(response.data.error.message.includes("emisión"), false);
+        const overview = await getAccountOverview(
+          user.userId,
+          apiAccountRepository,
+        );
+        assert.equal(overview.quantity, null);
+        assert.equal(overview.invested, null);
+        assert.deepEqual(overview.applications, []);
+        assert.ok(overview.holdingsError);
+        assert.equal(overview.applicationsError, "");
+        assert.equal(await models.Purchase.count(), before);
+      } finally {
+        env.blockchain.enabled = enabled;
+      }
+    },
+  );
+  await check(
+    "manifiesto ausente y RPC caído dan 503; desactivar escrituras conserva lecturas",
+    async () => {
+      const { academicRuntime } = require(
+        path.join(back, "src/blockchain/academic"),
+      );
+      const manifestPath = env.blockchain.manifestPath;
+      env.blockchain.manifestPath = path.join(dir, "missing.json");
+      try {
+        const response = await dispatch(
+          "GET",
+          "/api/account/investment",
+          undefined,
+          userToken,
+        );
+        assert.equal(response.status, 503);
+        assert.equal(
+          response.data.error.details.code,
+          "BLOCKCHAIN_MANIFEST_UNAVAILABLE",
+        );
+      } finally {
+        env.blockchain.manifestPath = manifestPath;
+      }
+      const { provider } = await academicRuntime();
+      const getNetwork = provider.getNetwork;
+      provider.getNetwork = async () => {
+        throw Error("RPC desconectado de prueba");
+      };
+      try {
+        const response = await dispatch(
+          "GET",
+          "/api/account/investment",
+          undefined,
+          userToken,
+        );
+        assert.equal(response.status, 503);
+        assert.equal(
+          response.data.error.details.code,
+          "BLOCKCHAIN_RPC_UNAVAILABLE",
+        );
+      } finally {
+        provider.getNetwork = getNetwork;
+      }
+      const allowWrites = env.blockchain.allowWrites;
+      env.blockchain.allowWrites = false;
+      try {
+        await assert.rejects(
+          academicRuntime(true),
+          (error) =>
+            error.statusCode === 503 &&
+            error.details.code === "BLOCKCHAIN_WRITES_DISABLED",
+        );
+        assert.equal(
+          (
+            await dispatch(
+              "GET",
+              "/api/account/investment",
+              undefined,
+              userToken,
+            )
+          ).status,
+          200,
+        );
+      } finally {
+        env.blockchain.allowWrites = allowWrites;
+      }
+    },
+  );
+  await check(
     "sin documentación no se compra ni se envía solicitud",
     async () => {
       assert.equal(
