@@ -171,6 +171,8 @@ async function main() {
       removeItem: (k) => storage.delete(k),
     },
     dispatchEvent() {},
+    addEventListener() {},
+    removeEventListener() {},
     ethereum: {
       request: async ({ method, params = [] }) => {
         if (method === "eth_accounts" || method === "eth_requestAccounts")
@@ -328,10 +330,38 @@ async function main() {
   await check(
     "perfil completo persistido, validación de fecha y sin aprobación automática",
     async () => {
-      await accountService.saveProfile(
-        user.userId,
-        profile,
-        apiAccountRepository,
+      const notifications = [];
+      const unsubscribe = apiSessionRepository.subscribe((value) =>
+        notifications.push(value),
+      );
+      try {
+        const saved = await accountService.saveProfile(
+          user.userId,
+          {
+            ...profile,
+            fullName: `  ${profile.fullName}  `,
+            cuil: "00-00000000-0",
+          },
+          apiAccountRepository,
+        );
+        assert.deepEqual(saved, profile);
+        assert.equal(notifications.length, 1);
+        assert.equal(notifications[0].displayName, profile.fullName);
+        assert.equal(notifications[0].kycApproved, false);
+      } finally {
+        unsubscribe();
+      }
+      assert.equal(
+        (await models.User.findByPk(user.userId)).displayName,
+        profile.fullName,
+      );
+      assert.equal(
+        JSON.parse(storage.get("frantoken:session:v1")).displayName,
+        profile.fullName,
+      );
+      assert.equal(
+        (await apiSessionRepository.getSession()).displayName,
+        profile.fullName,
       );
       assert.equal(
         (await apiAccountRepository.getProfile(user.userId)).dni,
@@ -351,6 +381,166 @@ async function main() {
       assert.equal(
         (await models.User.findByPk(user.userId)).kycApproved,
         false,
+      );
+    },
+  );
+  await check(
+    "validación del perfil coincide entre frontend y backend",
+    async () => {
+      const frontendSchema = require(
+        path.join(front, "src/features/account/schemas/profile.schema"),
+      ).profileSchema;
+      const backendSchema = require(
+        path.join(back, "src/validators/account.validator"),
+      ).profileSchema;
+      const normalized = {
+        ...profile,
+        fullName: ` ${profile.fullName} `,
+        cuil: "00-00000000-0",
+        province: ` ${profile.province} `,
+      };
+      assert.deepEqual(
+        frontendSchema.parse(normalized),
+        backendSchema.parse(normalized),
+      );
+      for (const invalid of [
+        { dni: "123456" },
+        { cuil: "1234567890" },
+        { birthDate: "2026-02-30" },
+        { birthDate: "2999-01-01" },
+        { province: "  " },
+        { city: "a".repeat(101) },
+        { address: "a".repeat(201) },
+        { postalCode: "12" },
+        { fullName: "a".repeat(101) },
+        { phone: "1".repeat(31) },
+        { country: "a".repeat(61) },
+      ]) {
+        assert.equal(
+          frontendSchema.safeParse({ ...profile, ...invalid }).success,
+          false,
+        );
+        assert.equal(
+          backendSchema.safeParse({ ...profile, ...invalid }).success,
+          false,
+        );
+      }
+    },
+  );
+  await check(
+    "error al actualizar usuario revierte todo el perfil y no altera la sesión",
+    async () => {
+      const before = await apiAccountRepository.getProfile(user.userId);
+      const cachedSession = storage.get("frantoken:session:v1");
+      const failureName = "Nombre que simula fallo de usuario";
+      models.User.addHook("beforeSave", "profile-rollback-test", (value) => {
+        if (value.displayName === failureName)
+          throw Error("Fallo simulado del usuario");
+      });
+      try {
+        await assert.rejects(
+          accountService.saveProfile(
+            user.userId,
+            {
+              ...profile,
+              fullName: failureName,
+              address: "Dirección que debe revertirse 456",
+            },
+            apiAccountRepository,
+          ),
+          /Error interno del servidor/,
+        );
+      } finally {
+        models.User.removeHook("beforeSave", "profile-rollback-test");
+      }
+      assert.deepEqual(
+        await apiAccountRepository.getProfile(user.userId),
+        before,
+      );
+      assert.equal(
+        (await models.User.findByPk(user.userId)).displayName,
+        profile.fullName,
+      );
+      assert.equal(storage.get("frantoken:session:v1"), cachedSession);
+    },
+  );
+  await check(
+    "error de usuario en el primer guardado no deja un perfil creado parcialmente",
+    async () => {
+      const registered = await dispatch("POST", "/api/auth/register", {
+        email: "rollback@example.test",
+        displayName: "Usuario sin perfil",
+        password: "testpass8",
+      });
+      assert.equal(registered.status, 201);
+      const newUser = registered.data.session;
+      models.User.addHook(
+        "beforeSave",
+        "profile-create-rollback-test",
+        (value) => {
+          if (value.id === newUser.userId)
+            throw Error("Fallo simulado en alta de perfil");
+        },
+      );
+      try {
+        assert.equal(
+          (
+            await dispatch(
+              "PUT",
+              "/api/account/profile",
+              profile,
+              registered.data.token,
+            )
+          ).status,
+          500,
+        );
+      } finally {
+        models.User.removeHook("beforeSave", "profile-create-rollback-test");
+      }
+      assert.equal(
+        await models.Profile.count({ where: { userId: newUser.userId } }),
+        0,
+      );
+      assert.equal(
+        (await models.User.findByPk(newUser.userId)).displayName,
+        newUser.displayName,
+      );
+    },
+  );
+  await check(
+    "guardar contactos conserva aprobación y cambiar identidad la revoca en sesión y SQL",
+    async () => {
+      await models.User.update(
+        { kycApproved: true },
+        { where: { id: user.userId } },
+      );
+      await accountService.saveProfile(
+        user.userId,
+        { ...profile, phone: "123456789", investorUpdates: true },
+        apiAccountRepository,
+      );
+      assert.equal((await models.User.findByPk(user.userId)).kycApproved, true);
+      assert.equal(
+        JSON.parse(storage.get("frantoken:session:v1")).kycApproved,
+        true,
+      );
+      await accountService.saveProfile(
+        user.userId,
+        { ...profile, fullName: "Otro nombre de prueba" },
+        apiAccountRepository,
+      );
+      assert.equal(
+        (await models.User.findByPk(user.userId)).kycApproved,
+        false,
+      );
+      assert.equal(
+        JSON.parse(storage.get("frantoken:session:v1")).kycApproved,
+        false,
+      );
+      await accountService.saveProfile(
+        user.userId,
+        profile,
+        apiAccountRepository,
       );
     },
   );
