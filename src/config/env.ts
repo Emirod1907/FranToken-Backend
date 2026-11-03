@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({
+  path: process.env.NODE_ENV === "production" ? ".env" : [".env.local", ".env"],
+});
 
 function required(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;

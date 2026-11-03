@@ -5,7 +5,7 @@ Actualizado: 2026-11-02. Se necesitan **los tres repositorios hermanos**: `frant
 ## Preparación
 
 1. Blockchain: `npm run node` en una terminal y `npm run deploy:academic` en otra. Genera `deployments/academic-local.json` (ignorado por Git), cuatro proyectos ilustrativos, C3 firmado, C4, registry, mUSDC y la fábrica para solicitudes nuevas. El manifiesto contiene direcciones públicas, no claves.
-2. Backend: copiar `.env.example` a `.env`, configurar SQL, `JWT_SECRET` y `CORS_ORIGIN=http://localhost:3000`. Mantener `DB_SYNC=false`; ejecutar `npm run db:migrate:mvp` para crear tablas/añadir campos sin borrar filas. Sobre una base existente, respaldarla antes. No se ejecutó esta migración contra tu base durante la implementación.
+2. Backend: en Ubuntu 24.04 x64/WSL ejecutar `npm run db:setup` para crear MariaDB local, configurar `.env.local`, migrar y cargar datos demo (ver [README](../README.md)). En otros sistemas, copiar `.env.example` a `.env`, configurar SQL y ejecutar `npm run db:migrate:mvp`. Configurar `JWT_SECRET` y `CORS_ORIGIN=http://localhost:3000` en el archivo utilizado; `.env.local` tiene prioridad sobre `.env` en desarrollo. Mantener `DB_SYNC=false`; la migración crea tablas/añade campos sin borrar filas. Sobre una base existente, respaldarla antes.
 3. En el entorno **local del backend**, definir:
 
    ```dotenv
@@ -59,7 +59,7 @@ Base `/api`. `register/login` entregan `{token,session}`. Session incluye `userI
 |---|---|
 | POST `/auth/register`, `/auth/login` | Registro/login; contraseña y email validados. |
 | GET `/auth/session` | Sesión vigente del JWT; 401 elimina sesión del cliente. |
-| GET/PUT `/account/profile` | Perfil completo; guardar identidad distinta revoca aprobación en SQL. |
+| GET/PUT `/account/profile` | GET devuelve `{profile}`. PUT devuelve `{profile,session}` tras guardar perfil y `User.displayName` en una misma transacción; crear perfil o cambiar identidad revoca aprobación en SQL. |
 | POST `/account/wallet/challenge` | `{walletAddress}` → mensaje con cuenta, nonce y vencimiento. |
 | PUT `/account/wallet` | `{walletAddress,signature}` → vínculo único comprobado. |
 | GET `/account/investment` | Snapshot para UI: wallet vinculada, habilitación efectiva, proyectos, balances y eventos. |
@@ -79,6 +79,12 @@ Base `/api`. `register/login` entregan `{token,session}`. Session incluye `userI
 | POST/PUT/PATCH/DELETE `/blockchain/*` | 410. Las lecturas históricas conservan su configuración opcional de direcciones. |
 
 Errores: `{error:{message,details?}}`; 400 validación, 401 sesión inválida, 403 permisos, 404 recurso ausente/no publicado, 409 requisito/conflicto on-chain, 503 integración deshabilitada/red inaccesible. Sin stack/SQL/PII en respuestas 500. Mantener el mismo requestId al recuperar una compra.
+
+### Guardado del perfil y usuario (2026-11-03)
+
+El frontend guarda los datos completos mediante un único PUT `/api/account/profile`, autorizado por el usuario del JWT. El backend bloquea la fila del usuario y guarda perfil, nombre visible y estado de revisión dentro de una transacción. Si falla cualquiera de esas escrituras, se revierten todas, incluso la creación inicial de un perfil. El email, el rol y la wallet no se modifican desde este formulario.
+
+La respuesta contiene los valores normalizados de perfil y la sesión actualizada. El repositorio del frontend actualiza la caché de sesión y notifica al proveedor de la pestaña actual; el formulario se reinicia con el perfil confirmado. Ya no es necesario llamar después a PATCH `/auth/display-name`. Las preferencias y el teléfono conservan la aprobación existente; crear o modificar los datos de identidad/domicilio requiere revisión nuevamente.
 
 ## Persistencia y migración
 

@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "lib": ["ES2021"],
     "outDir": "./dist",
+    "ignoreDeprecations": "5.0",
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,

@@ -9,7 +9,7 @@ import { TokenActivity } from "../models/tokenActivity.model";
 import { TokenHolding } from "../models/tokenHolding.model";
 import { Purchase } from "../models/purchase.model";
 import { profileSchema } from "../validators/account.validator";
-import { User } from "../models/user.model";
+import { User, toSession } from "../models/user.model";
 import { WalletChallenge } from "../models/walletChallenge.model";
 import { ApiError } from "../utils/ApiError";
 import type {
@@ -25,27 +25,37 @@ export async function getProfile(userId: string) {
 }
 
 export async function saveProfile(userId: string, input: ProfileInput) {
-  const [profile] = await Profile.findOrCreate({
-    where: { userId },
-    defaults: { userId, ...input },
+  return sequelize.transaction(async (transaction) => {
+    const user = await User.findByPk(userId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!user) throw ApiError.unauthorized();
+    const [profile, created] = await Profile.findOrCreate({
+      where: { userId },
+      defaults: { userId, ...input },
+      transaction,
+    });
+    const identityFields = [
+      "fullName",
+      "dni",
+      "cuil",
+      "birthDate",
+      "province",
+      "city",
+      "address",
+      "postalCode",
+      "country",
+    ] as const;
+    const changed =
+      created || identityFields.some((key) => profile.get(key) !== input[key]);
+    profile.set(input);
+    await profile.save({ transaction });
+    user.displayName = input.fullName;
+    if (changed) user.kycApproved = false;
+    await user.save({ transaction });
+    return { profile: profile.toContract(), session: toSession(user) };
   });
-  const identityFields = [
-    "fullName",
-    "dni",
-    "cuil",
-    "birthDate",
-    "province",
-    "city",
-    "address",
-    "postalCode",
-    "country",
-  ] as const;
-  const changed = identityFields.some((key) => profile.get(key) !== input[key]);
-  profile.set(input);
-  await profile.save();
-  if (changed)
-    await User.update({ kycApproved: false }, { where: { id: userId } });
-  return profile.toContract();
 }
 
 // ─── Tenencias (solo lectura) ────────────────────────────────

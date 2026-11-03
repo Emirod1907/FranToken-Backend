@@ -39,8 +39,8 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const saveProfile = asyncHandler(async (req: Request, res: Response) => {
-  const profile = await accountService.saveProfile(userId(req), req.body);
-  res.json({ profile });
+  const result = await accountService.saveProfile(userId(req), req.body);
+  res.json(result);
 });
 
 export const getHoldings = asyncHandler(async (req: Request, res: Response) => {

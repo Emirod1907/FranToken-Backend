@@ -8,13 +8,34 @@ Express + TypeScript + Sequelize (MySQL/PostgreSQL), JWT y conexión a Hardhat l
 
 Requisitos: dependencias instaladas con el lockfile, SQL MySQL/PostgreSQL, Node compatible con dependencias (validado Node 24), frontend y blockchain como repositorios hermanos. No se requiere proveedor bancario ni KYC real.
 
+En **Ubuntu 24.04 x64 / WSL**, podés crear la base de prueba sin Docker ni `sudo`:
+
+```bash
+npm run db:setup
+npm run dev
+```
+
+`db:setup` descarga paquetes de MariaDB desde los repositorios de Ubuntu y los extrae en `.local/mariadb/`, inicia el servidor en `127.0.0.1:3306`, crea la base `frantoken` con un usuario propio y contraseña aleatoria, ejecuta la migración aditiva y carga cuatro proyectos y el administrador demo. Actualiza únicamente los campos de base de datos de `.env.local`; conserva las demás opciones. La carga inicial de datos no requiere blockchain. Para probar compras y repartos, completar la configuración de Hardhat de abajo.
+
+```bash
+npm run db:status  # comprobar si está activo
+npm run db:stop    # detener conservando los datos
+npm run db:start   # volver a iniciar, también después de reiniciar WSL
+```
+
+Los datos, binarios, logs y credenciales permanecen en `.local/` y `.env.local`, excluidos de Git. Repetir `db:setup` conserva las filas existentes. El puerto 3306 debe estar libre; los comandos solo administran esta instancia del proyecto. El servidor se mantiene activo al cerrar la terminal y se detiene con `db:stop` o al apagar WSL. En otros sistemas, configurar un servidor MySQL/PostgreSQL propio.
+
+El backend carga `.env.local` antes que `.env` en desarrollo; las variables del proceso tienen prioridad. En producción solo carga `.env`.
+
+Para completar el MVP con blockchain:
+
 1. En blockchain ejecutar `npm run node` y `npm run deploy:academic` en terminales separadas.
-2. Copiar `.env.example` a `.env`; configurar SQL, JWT y CORS. Para la demo activar `BLOCKCHAIN_ENABLED`, `BLOCKCHAIN_ALLOW_WRITES` y `BLOCKCHAIN_USE_LOCAL_ACCOUNTS`, con RPC loopback 31337 y el manifiesto generado. Ver la guía; no copiar claves al frontend.
+2. Si usaste `db:setup`, editar el `.env.local` generado. En otro caso, copiar `.env.example` a `.env` y configurar SQL. Configurar JWT y CORS; para la demo activar `BLOCKCHAIN_ENABLED`, `BLOCKCHAIN_ALLOW_WRITES` y `BLOCKCHAIN_USE_LOCAL_ACCOUNTS`, con RPC loopback 31337 y el manifiesto generado. Ver la guía; no copiar claves al frontend.
 3. `npm run db:migrate:mvp`: migración aditiva, sin borrar compras/perfiles. Mantener `DB_SYNC=false` en una base existente.
 4. `npm run mvp:import`: importa catálogo/direcciones, sin compras ni repartos ficticios. Crea administrador local demo si falta: `demo@frantoken.test` / `demodemo8`. Es un acceso público de prueba, sin aprobación automática de identidad.
 5. `npm run dev`: API `http://localhost:4000/api`, salud en `/api/health`. Frontend usa `NEXT_PUBLIC_API_URL=http://localhost:4000` sin `/api` al final.
 
-No se ejecutaron migraciones sobre tu base de datos durante esta implementación. El seed no resetea estados. Reiniciar Hardhat pierde sus derechos/eventos: para una nueva presentación usar otra base de prueba, migrar e importar de nuevo; no mezclar despliegues ni borrar historial automáticamente.
+El seed no resetea estados. Reiniciar Hardhat pierde sus derechos/eventos: para una nueva presentación usar otra base de prueba, migrar e importar de nuevo; no mezclar despliegues ni borrar historial automáticamente.
 
 ## Unidades y autoridad
 
