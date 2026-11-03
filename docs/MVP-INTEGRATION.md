@@ -24,6 +24,14 @@ Actualizado: 2026-11-02. Se necesitan **los tres repositorios hermanos**: `frant
 
 Cada fixture tiene 1000 tokens enteros a USD 10. El admin técnico recibe mUSDC de prueba para repartir. Son parámetros ilustrativos, sin alianza con marcas ni ofertas reales. Las claves nunca van al repositorio ni al navegador como configuración de servidor.
 
+## Conexión local y disponibilidad de tokens
+
+El resumen `/mi-cuenta` y el detalle `/mi-cuenta/tokens` son pantallas distintas. El resumen consulta solicitudes y tenencias por separado: si falla la cadena, conserva las solicitudes y muestra los saldos como no disponibles, sin inventar ceros ni movimientos.
+
+El botón «Conectar wallet» requiere una consulta de tokens disponible. Solicita seleccionar Hardhat local (31337 / `0x7a69`); si la wallet no conoce la red, solicita agregarla con el RPC público configurado en `NEXT_PUBLIC_BLOCKCHAIN_RPC_URL` (por defecto `http://127.0.0.1:8545`) y vuelve a comprobar la selección antes de pedir la firma de vínculo. Cancelar o dejar otra solicitud pendiente produce un mensaje específico. El cambio/agregado de red requiere confirmación en la extensión, según la [documentación de MetaMask](https://docs.metamask.io/metamask-connect/evm/guides/manage-networks/).
+
+Si el backend responde 503, revisar la preparación anterior: nodo iniciado, despliegue generado e importado, y variables `BLOCKCHAIN_*` habilitadas en `.env.local`. El cambio de `.env.local` requiere reiniciar Express si no hubo otro cambio de código que lo reinicie. Los errores incluyen un código diagnóstico en `error.details.code`: `BLOCKCHAIN_DISABLED`, `BLOCKCHAIN_WRITES_DISABLED`, `BLOCKCHAIN_MANIFEST_UNAVAILABLE`, `BLOCKCHAIN_RPC_NOT_CONFIGURED`, `BLOCKCHAIN_RPC_UNAVAILABLE`, `BLOCKCHAIN_WRONG_NETWORK` o `BLOCKCHAIN_DEPLOYMENT_MISSING`. Una consulta de lectura no informa que ocurrió una emisión.
+
 ## Presentación
 
 1. `/registro`: crear una cuenta de usuario; `/mi-cuenta/configuracion`: completar documentación ficticia y domicilio. Si esa ruta cambia, usar el enlace «Mi perfil» en la cuenta.
