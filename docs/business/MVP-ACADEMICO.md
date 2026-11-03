@@ -17,7 +17,7 @@ Precio: **USD 10 por token entero**, representado en C4 como 1000 centavos USD (
 
 ## Usuarios, documentación y permisos
 
-Cualquier cuenta registrada puede invertir **y** presentar una franquicia. El rol técnico `investor` por defecto no excluye ser solicitante; no se exige un rol franquiciado distinto. Solo `admin` revisa documentación, publica proyectos y administra repartos. Elegir un rol en el navegador o vincular una wallet no otorga esos permisos.
+Cualquier cuenta registrada puede invertir **y** presentar una franquicia. El rol técnico `investor` por defecto no excluye ser solicitante; no se exige un rol franquiciado distinto. Solo `superadmin` revisa documentación, admite/publica emisiones y ejecuta repartos. El creador gestiona la operación de sus propias franquicias y propone ingresos para revisión interna. El rol `admin` anterior queda como legado sin privilegios globales. Elegir un rol en el navegador o vincular una wallet no otorga esos permisos.
 
 El perfil requiere nombre, DNI, CUIL, fecha de nacimiento válida y no futura, país, provincia, ciudad, dirección y código postal; teléfono y preferencia de novedades completan el formulario. Son campos de texto, sin carga de archivos ni proveedor KYC. Usar exclusivamente datos ficticios en la demo. Se guardan en SQL y se exponen al propio usuario y a administración; no se publican en el catálogo ni en blockchain. La habilitación manual denominada `kycApproved` no certifica una identidad legalmente.
 
@@ -29,7 +29,7 @@ Para presentar una franquicia alcanza el perfil completo: no se exige poseer tok
 
 Formulario: nombre, sector libre, ciudad, país, inversión estimada y moneda USD/ARS, operador, mes estimado de apertura y descripción. El historial de tres ejercicios es opcional y no integra el formulario mínimo. El costo estimado de la solicitud no se convierte automáticamente en cupo de emisión ni en rentabilidad.
 
-Estados: **Enviada → Aprobada / Observada → Publicada**. Las observaciones se ven en «Mis solicitudes»; corregir el perfil y presentar una nueva solicitud si corresponde. No hay editor de solicitudes ya enviadas en esta versión. El ID y el estado se reciben del backend, no se inventan en la UI.
+Estados: **Enviada → Aprobada / Observada → Publicada**. Las observaciones y el historial se ven en «Mis solicitudes». El creador puede corregir y reenviar su solicitud mientras no se haya reservado su publicación; cada corrección vuelve a Enviada e invalida una aprobación previa. La reserva de publicación y los datos ya publicados quedan protegidos. El ID y el estado se reciben del backend, no se inventan en la UI.
 
 Al publicar, el administrador define símbolo y cupo entero de prueba (1 a 1000000). Express reserva un proyecto estable y solicita a la fábrica crear su token académico y C4. Configura C4 como controlador/agente, publica el token y entrega administración a la cuenta técnica. Solo entonces aparecen sus contratos en el catálogo. Reintentar con la misma solicitud/símbolo/cupo recupera la publicación; otro contenido se rechaza. No se inventa ROI para los nuevos proyectos.
 
@@ -69,3 +69,10 @@ La franquicia pasa Draft → Published → Operating → Closed (también puede 
 La demo debe permitir registro/perfil, compra C4, respuesta perdida sin doble emisión, publicación de una solicitud nueva, dos titulares a prorrata, reparto mensual único, compra posterior sin ingresos retroactivos y cobro sin repetición. Debe rechazar acciones admin de un usuario común, falta de documentación/términos, transferencias ordinarias y reparto fuera de operación.
 
 Fuera de alcance: bancos, KYC real, retornos garantizados, metas de campaña/devoluciones, balances e impuestos, liquidación económica, cascada completa C1–C3, sustitución de operadora, mercado secundario y automatización por calendario. C3 se firma con cuentas de prueba para satisfacer C4; C1/C2 permanecen como ejemplos del modelo completo. Las decisiones pendientes de [DECISIONS.md](DECISIONS.md) siguen abiertas para valor real. No se agregan proveedores, redes públicas ni una aprobación jurídica.
+
+
+## Gestión por creador y superadmin
+
+Actualización aprobada por el usuario el 2026-11-03: el creador puede gestionar la operación y cerrar sus propias franquicias publicadas; el superadmin tiene acceso global, incluidos los proyectos ilustrativos sin creador. La admisión y publicación de la emisión inicial son exclusivas del superadmin. El alta interna es explícita, sin contraseña pública ni promoción automática de usuarios.
+
+Los creadores proponen mes e importe de reparto; el superadmin observa o ejecuta usando los fondos técnicos de prueba. Proponer no acredita ni paga ingresos. Una propuesta iniciada queda inmutable hasta conciliar; se reutiliza la unicidad de franquicia/período para impedir duplicados. Se conserva el cierre terminal, el cobro individual y la ausencia de reventa. No se modifican los contratos ni los roles jurídicos del modelo completo.

@@ -1,6 +1,6 @@
 # Ejecutar el MVP integrado
 
-Actualizado: 2026-11-02. Se necesitan **los tres repositorios hermanos**: `frantoken-frontend`, `FranToken-Backend` y `FranToken_Blockchain`, sus dependencias instaladas, una base MySQL/PostgreSQL y una wallet EVM. El coordinador es Express; Next no usa claves administrativas. Solo Hardhat local y activos de prueba.
+Actualizado: 2026-11-03. Se necesitan **los tres repositorios hermanos**: `frantoken-frontend`, `FranToken-Backend` y `FranToken_Blockchain`, sus dependencias instaladas, una base MySQL/PostgreSQL y una wallet EVM. El coordinador es Express; Next no usa claves administrativas. Solo Hardhat local y activos de prueba.
 
 ## Preparación
 
@@ -18,7 +18,7 @@ Actualizado: 2026-11-02. Se necesitan **los tres repositorios hermanos**: `frant
    ```
 
    Las cuentas desbloqueadas solo se aceptan con RPC loopback y opt-in explícito. Alternativamente, `BLOCKCHAIN_ADMIN_PRIVATE_KEY` y `BLOCKCHAIN_VERIFIER_PRIVATE_KEY` deben corresponder a las direcciones distintas del manifiesto; solo en servidor. No reutilizar claves de Hardhat en otras redes.
-4. Backend: `npm run mvp:import` vincula los cuatro proyectos de muestra con los contratos. No crea compras, ingresos ni tenencias; no reabre franquicias. Crea el administrador demo `demo@frantoken.test` / `demodemo8` si no existe, exclusivamente para esta presentación local. No se autoaprueba documentación. Ejecutar `npm run dev` en otra terminal; `GET http://localhost:4000/api/health` comprueba disponibilidad HTTP.
+4. Backend: `npm run mvp:import` vincula los cuatro proyectos de muestra con los contratos. No crea compras, ingresos ni tenencias; no reabre franquicias. Conserva la cuenta demo legada, que ya no tiene acceso interno. Ejecutar `npm run db:migrate:franchises`, configurar `SUPERADMIN_EMAIL`/`SUPERADMIN_PASSWORD` en el entorno privado y ejecutar `npm run superadmin:create` para preparar una cuenta interna nueva; no se promueven cuentas existentes. No se autoaprueba documentación. Ejecutar `npm run dev` en otra terminal; `GET http://localhost:4000/api/health` comprueba disponibilidad HTTP.
 5. Frontend: copiar `.env.example` a `.env.local` o configurar `NEXT_PUBLIC_API_URL=http://localhost:4000`, sin `/api` al final. Ejecutar `pnpm dev`. Si esa variable queda vacía solo hay vista previa con datos locales; compra/publicación requieren Express.
 6. Wallet: red local 31337, RPC `http://127.0.0.1:8545`, ETH de prueba. Importar solo una cuenta pública desechable del nodo. Las posiciones son: cuenta 0 admin técnico/fondeador; 1 vehículo C3; 2 plataforma C3; 3 verificador; 4+ usuarios. Las cuentas locales están preinscritas en registry como fixture; Express igualmente exige aprobación manual del perfil para comprar. No exponer el nodo desbloqueado a Internet.
 
@@ -35,14 +35,14 @@ Si el backend responde 503, revisar la preparación anterior: nodo iniciado, des
 ## Presentación
 
 1. `/registro`: crear una cuenta de usuario; `/mi-cuenta/configuracion`: completar documentación ficticia y domicilio. Si esa ruta cambia, usar el enlace «Mi perfil» en la cuenta.
-2. Desde una ficha en `/marketplace`, vincular la wallet: desafío de Express firmado por el usuario. En otra sesión de navegador, ingresar como admin en `/administracion`, revisar el perfil y aprobar la habilitación. No es necesario conectar la wallet 0 para que el admin web ordene operaciones; el backend firma con sus cuentas técnicas.
+2. Desde una ficha en `/marketplace`, vincular la wallet: desafío de Express firmado por el usuario. En otra sesión de navegador, ingresar como superadmin en `/administracion`, revisar el perfil y aprobar la habilitación. No es necesario conectar la wallet 0 para que el admin web ordene operaciones; el backend firma con sus cuentas técnicas.
 3. Usuario: aceptar términos en la wallet, ingresar cantidad y confirmar pago simulado. El backend usa JWT y la wallet vinculada; C4 emite y devuelve hash. No hay débito USD ni transferencia de mUSDC al comprar.
 4. `/mi-cuenta/tokens` muestra balances e ingresos desde cadena. Ante respuesta perdida, usar «Recuperar compra pendiente»; no borrar referencias ni cambiar la cantidad para resolver un resultado incierto.
-5. Admin: iniciar operación y registrar mes `YYYY-MM` e importe mUSDC con hasta seis decimales. La cuenta técnica aprueba fondos y distribuye. Repetir el mismo mes/importe recupera el resultado; otro importe se rechaza.
+5. Creador o superadmin: abrir `/mi-cuenta/franquicias/[projectId]`, iniciar operación y proponer mes `YYYY-MM` e importe mUSDC con hasta seis decimales. El superadmin observa o ejecuta la propuesta almacenada; la cuenta técnica fondea/distribuye. El reintento recupera el resultado sin duplicarlo.
 6. Usuario: actualizar y cobrar. La wallet del titular firma `claimRevenue`, recibe mUSDC y cambia disponible/cobrado. Aceptación y cobro consumen gas de esa wallet; emisión consume gas del verificador; fondeo/reparto, del admin técnico.
 7. El mismo usuario puede ir a «Abrir una franquicia», completar la solicitud básica sin tres ejercicios históricos y verla en `/mi-cuenta/solicitudes`. La confirmación muestra el ID real y el estado.
-8. Admin: aprobar/observar con nota; publicar una solicitud aprobada con símbolo y cupo entero. Se crea token+C4 y aparece automáticamente en el catálogo, comprable con el mismo flujo. La inversión estimada no calcula el cupo. Una publicación pendiente admite reintento con los mismos parámetros.
-9. Cerrar detiene nuevas compras/repartos; conserva cobro de ingresos anteriores. El cierre no se revierte ni liquida un vehículo real.
+8. Superadmin en `/administracion/franquicias`: aprobar/observar con nota; publicar una solicitud aprobada con símbolo y cupo entero. Se crea token+C4 y aparece automáticamente en el catálogo, comprable con el mismo flujo. La inversión estimada no calcula el cupo. Una publicación pendiente admite reintento con los mismos parámetros.
+9. El creador puede corregir/reenviar desde el detalle de su solicitud hasta comenzar la publicación. Cada cambio invalida la aprobación previa. Cerrar desde la gestión de franquicia detiene nuevas compras/repartos; conserva cobro de ingresos anteriores. El cierre no se revierte ni liquida un vehículo real.
 
 ## Reintentos, datos y reinicios
 
@@ -57,11 +57,11 @@ Si el backend responde 503, revisar la preparación anterior: nodo iniciado, des
 
 Backend: `npm run build`, `npm run typecheck:scripts` y `npm run test:mvp`. Blockchain: `npm test`. Frontend: `pnpm typecheck`, `node scripts/check-architecture.mjs`, `pnpm lint` sobre el alcance y `pnpm build`. Para el runner integrado se requiere **Node 24** por `node:sqlite`; llama los clientes reales de frontend, Express/JWT, Sequelize/SQL y contratos Hardhat en memoria, sin abrir puertos. El mismo test se invoca desde frontend con `node scripts/test-academic-integration.cjs`.
 
-Ver evidencia y limitaciones en el documento de pruebas del frontend. Falta la comprobación manual con navegador y extensión real; la prueba en memoria no verifica render visual ni transporte TCP. No se usan fondos reales.
+Ver evidencia y limitaciones en el documento de pruebas del frontend. Se verificaron login/listados por HTTP y navegador en escritorio/móvil; las escrituras de la prueba visual usaron respuestas controladas. Falta comprobar una extensión real y PostgreSQL. No se usan fondos reales.
 
 ## Contrato HTTP
 
-Base `/api`. `register/login` entregan `{token,session}`. Session incluye `userId,email,displayName,role,walletAddress,kycApproved`. Las rutas de cuenta usan Bearer y nunca aceptan `userId` como autoridad del cuerpo. Todo `/admin` exige además rol admin.
+Base `/api`. `register/login` entregan `{token,session}`. Session incluye `userId,email,displayName,role,walletAddress,kycApproved`. Las rutas de cuenta usan Bearer y nunca aceptan `userId` como autoridad del cuerpo. Todo `/admin` exige además rol superadmin.
 
 | Método y ruta | Cuerpo / resultado |
 |---|---|
@@ -78,9 +78,9 @@ Base `/api`. `register/login` entregan `{token,session}`. Session incluye `userI
 | GET/PUT/DELETE `/account/draft` | Borrador propio; PUT `{payload}`. Envío de solicitud lo limpia dentro de la transacción. |
 | GET `/admin/users`, `/admin/applications` | Revisión privada de perfiles/solicitudes; sin hashes de contraseña. |
 | POST `/admin/users/:id/kyc` | `{approved:boolean}` → registry y aprobación SQL. Perfil completo + wallet para aprobar. |
-| PATCH `/admin/applications/:id/review` | `{status:"Aprobada"|"Observada",note?:string}`. |
+| PATCH `/admin/applications/:id/review` | `{version:number,status:"Aprobada"|"Observada",note?:string}`. |
 | POST `/admin/applications/:id/publish` | `{symbol,totalUnits:string}` → proyecto publicado; reintento con los mismos parámetros. |
-| PATCH `/admin/projects/:slug` | Solo `{status:"publicada"|"en_operacion"|"cerrada"}`; confirma transición on-chain. No modifica precio/cableado desde UI. |
+| PATCH `/admin/projects/:slug` | Solo `{status:"en_operacion"|"cerrada"}`; confirma transición on-chain. No modifica precio/cableado desde UI. |
 | POST `/admin/distributions` | `{projectId,periodId:"YYYY-MM",amount:string,memo?:string}`. `amount` en mUSDC mayor, hasta 6 decimales. 201 nuevo / 200 recuperado. |
 | GET `/admin/projects/:slug/distributions` | Auditoría SQL del período, amountMinor y escala explícita 6. |
 | GET `/projects`, `/projects/:slug` | Catálogo público publicado/cableado; supply, cupo y estado leídos de cadena. Sin perfil del solicitante. |
@@ -99,3 +99,5 @@ La respuesta contiene los valores normalizados de perfil y la sesión actualizad
 `db:migrate:mvp` usa sync sin alter para tablas nuevas, agrega campos nullable de perfil y revisión/vínculo de solicitud, ensancha la moneda de distribución para `mUSDC` y convierte sector enum a texto. No convierte tenencias simuladas en tokens, no aprueba usuarios y no elimina historial. Verificar especialmente la conversión enum en MySQL/PostgreSQL antes de aplicarla a una base compartida; aquí se probó SQL SQLite, no un servidor de esos dialectos.
 
 `src/blockchain/generated/compliance.json` contiene ABI y bytecode públicos de `FranchiseCompliance`, compilado con Solidity 0.8.24 del checkout blockchain. Si ese contrato cambia, recompilar y ejecutar `npm run mvp:sync-artifact` en backend para actualizar ABI/bytecode del mismo build; no incluye claves ni manifiestos del entorno.
+
+Consultar [gestión de franquicias y permisos](FRANCHISE-MANAGEMENT.md) para rutas, versiones, migración y acceso interno.

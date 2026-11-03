@@ -109,7 +109,7 @@ async function seedDemoUserAndCircuit() {
       email: DEMO_EMAIL,
       displayName: "Inversor demo",
       passwordHash: await hashPassword(DEMO_PASSWORD),
-      // Administrador de demostración; no habilita inversiones sin revisión.
+      // Cuenta legada de demostración; no tiene permisos internos de superadmin.
       role: "admin",
       kycApproved: false,
     },
@@ -126,7 +126,7 @@ async function seedDemoUserAndCircuit() {
     },
   });
 
-  console.log(`[seed] Administrador demo listo: ${DEMO_EMAIL}`);
+  console.log(`[seed] Cuenta demo lista (sin acceso interno): ${DEMO_EMAIL}`);
 }
 
 /** Siembra idempotente, reutilizable desde el arranque del server (SEED_ON_BOOT). */

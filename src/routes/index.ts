@@ -4,6 +4,7 @@ import adminRoutes from "./admin.routes";
 import authRoutes from "./auth.routes";
 import blockchainRoutes from "./blockchain.routes";
 import projectRoutes from "./project.routes";
+import franchiseRoutes from "./franchise.routes";
 
 const router = Router();
 
@@ -14,6 +15,7 @@ router.get("/health", (_req, res) => {
 router.use("/auth", authRoutes);
 router.use("/account", accountRoutes);
 router.use("/projects", projectRoutes);
+router.use("/franchises", franchiseRoutes);
 router.use("/blockchain", blockchainRoutes);
 router.use("/admin", adminRoutes);
 

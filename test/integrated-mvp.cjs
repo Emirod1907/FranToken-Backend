@@ -65,8 +65,11 @@ const investments = require(
 const adminClient = require(
   path.join(
     front,
-    "src/features/investment/repositories/adminReview.repository",
+    "src/features/franchises/repositories/adminReview.repository",
   ),
+);
+const { franchiseRepository: franchiseClient } = require(
+  path.join(front, "src/features/franchises/repositories/franchise.repository"),
 );
 const app = createApp();
 async function dispatch(method, url, body, token) {
@@ -239,7 +242,7 @@ async function main() {
     email: "admin@example.test",
     displayName: "Admin demo",
     passwordHash: await hashPassword("testpass8"),
-    role: "admin",
+    role: "superadmin",
   });
   let count = 0;
   async function check(name, fn) {
@@ -858,40 +861,15 @@ async function main() {
     "operación y distribución mensual sincronizadas; período e importe protegidos",
     async () => {
       asAdmin();
-      let adm = await wallet.fetchAcademicSnapshot(null);
       await assert.rejects(
-        investments.submitAcademicOperation(adm, {
-          action: "distribute",
-          projectId: "havanna",
-          period: "2026-11",
-          amount: "30",
-        }),
+        adminClient.distributeDirect("havanna", "2026-11", "30"),
         /operación/,
       );
-      await investments.submitAcademicOperation(adm, {
-        action: "state",
-        projectId: "havanna",
-        status: 2,
-      });
-      await investments.submitAcademicOperation(adm, {
-        action: "distribute",
-        projectId: "havanna",
-        period: "2026-11",
-        amount: "30",
-      });
-      await investments.submitAcademicOperation(adm, {
-        action: "distribute",
-        projectId: "havanna",
-        period: "2026-11",
-        amount: "30",
-      });
+      await franchiseClient.operation("havanna", "en_operacion");
+      await adminClient.distributeDirect("havanna", "2026-11", "30");
+      await adminClient.distributeDirect("havanna", "2026-11", "30");
       await assert.rejects(
-        investments.submitAcademicOperation(adm, {
-          action: "distribute",
-          projectId: "havanna",
-          period: "2026-11",
-          amount: "31",
-        }),
+        adminClient.distributeDirect("havanna", "2026-11", "31"),
       );
       assert.equal(
         await models.Distribution.count({ where: { status: "confirmed" } }),
@@ -930,6 +908,7 @@ async function main() {
         application.id,
         "Aprobada",
         "Aprobación de prueba",
+        application.version,
       );
       await adminClient.publishFranchise(application.id, "NUEVA", "100");
       await adminClient.publishFranchise(application.id, "NUEVA", "100");
@@ -975,18 +954,8 @@ async function main() {
       ]);
       assert.deepEqual(duplicates.map((r) => r.status).sort(), [200, 201]);
       asAdmin();
-      const adm = await wallet.fetchAcademicSnapshot(null);
-      await investments.submitAcademicOperation(adm, {
-        action: "state",
-        projectId: project.id,
-        status: 2,
-      });
-      await investments.submitAcademicOperation(adm, {
-        action: "distribute",
-        projectId: project.id,
-        period: "2026-12",
-        amount: "12.345678",
-      });
+      await franchiseClient.operation(project.id, "en_operacion");
+      await adminClient.distributeDirect(project.id, "2026-12", "12.345678");
       asUser();
       snapshot = await wallet.fetchAcademicSnapshot(null);
       const updated = snapshot.projects.find((p) => p.id === project.id);
@@ -995,6 +964,23 @@ async function main() {
       await wallet.claimAcademicRevenue(updated, activeWallet);
     },
   );
+  await require("./franchise-management.cjs")({
+    check,
+    models,
+    dispatch,
+    back,
+    front,
+    adminToken,
+    userToken,
+    user,
+    application,
+    profile,
+    adminClient,
+    apiAccountRepository,
+    asUser,
+    asAdmin,
+    hashPassword,
+  });
   await check(
     "migración aditiva ejecutable dos veces preserva usuarios y compras",
     async () => {

@@ -1,6 +1,11 @@
 import { Router } from "express";
 import * as adminController from "../controllers/admin.controller";
-import { requireAdmin } from "../middleware/admin.middleware";
+import { requireSuperadmin } from "../middleware/admin.middleware";
+import * as franchiseController from "../controllers/franchise.controller";
+import {
+  observeDistributionSchema,
+  versionSchema,
+} from "../validators/franchise.validator";
 import { requireAuth } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
 import {
@@ -13,8 +18,19 @@ import {
 
 const router = Router();
 
-// Todo el namespace /admin exige rol admin.
-router.use(requireAuth, requireAdmin);
+router.use(requireAuth, requireSuperadmin);
+
+router.get("/distribution-requests", franchiseController.allRequests);
+router.patch(
+  "/distribution-requests/:id/review",
+  validateBody(observeDistributionSchema),
+  franchiseController.observe,
+);
+router.post(
+  "/distribution-requests/:id/execute",
+  validateBody(versionSchema),
+  franchiseController.execute,
+);
 
 router.get("/users", adminController.users);
 router.get("/applications", adminController.applications);
